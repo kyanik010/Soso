@@ -9,7 +9,6 @@
 
 :root{
   --u:min(calc(100vw / 739),calc(100vh / 415));
-  --vh:100vh;
   --cyan:#00d4ff;
   --cyan-light:#7dd3fc;
   --bg:#020617;
@@ -857,7 +856,7 @@ height:calc(160 * var(--u));
 
 
 
-  html.goldy-portrait,
+  html.goldy-portrait html,
 html.goldy-portrait body{
     height:100%;
   }
@@ -865,7 +864,7 @@ html.goldy-portrait body{
   html.goldy-portrait .stage{
 
     width:100%;
-    height:var(--vh);
+    height:100%;
 
     top:0;
     transform:none;
@@ -1267,13 +1266,6 @@ html.goldy-portrait .poster:focus-visible{
 
  
 </style>
-<script>
-(function () {
-  var portrait = window.innerHeight > window.innerWidth;
-  document.documentElement.classList.toggle('goldy-portrait', portrait);
-  document.documentElement.classList.toggle('goldy-landscape', !portrait);
-})();
-</script>
 </head>
 
 
@@ -2046,10 +2038,6 @@ const $ =
 
 window.IPTV = {
 
-  refresh(){
-    render();
-  },
-
   onNavigate(key){},
 
   onOpen(movie){},
@@ -2497,44 +2485,36 @@ function render(){
    ========================================================= */
 
 function applyOrientation(){
-  var p =
+  var portrait =
     window.innerHeight > window.innerWidth;
 
-  var prev =
-    document.documentElement.classList.contains(
-      "goldy-portrait"
-    );
+  var shortLandscape =
+    !portrait &&
+    window.innerHeight <= 360;
+
+  var smallPortrait =
+    portrait &&
+    window.innerWidth <= 370;
 
   document.documentElement.classList.toggle(
     "goldy-portrait",
-    p
+    portrait
   );
 
   document.documentElement.classList.toggle(
     "goldy-landscape",
-    !p
+    !portrait
   );
 
   document.documentElement.classList.toggle(
     "goldy-small-portrait",
-    p && window.innerWidth <= 370
+    smallPortrait
   );
 
   document.documentElement.classList.toggle(
     "goldy-short-landscape",
-    !p && window.innerHeight <= 360
+    shortLandscape
   );
-
-  if (prev !== p) {
-    if (
-      typeof window.IPTV !== "undefined" &&
-      typeof window.IPTV.refresh === "function"
-    ) {
-      window.IPTV.refresh();
-    } else if (typeof render === "function") {
-      render();
-    }
-  }
 }
 
 applyOrientation();
@@ -2559,7 +2539,16 @@ window.addEventListener(
       );
 
 
-    lastPortrait = portrait;
+    if(
+      portrait !== lastPortrait
+    ){
+
+      lastPortrait =
+        portrait;
+
+      render();
+
+    }
 
   },
   {

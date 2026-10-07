@@ -25,7 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.core.view.doOnLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
@@ -56,6 +55,40 @@ fun GoldyHomeScreen(
 
     // Hold reference to WebView for evaluation
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    fun initializeGoldyPage(view: WebView) {
+        val finishInitialization: () -> Unit = {
+            injectU(view)
+            sendMoviesToWebView(view, movies)
+            view.post {
+                view.requestLayout()
+                view.invalidate()
+                view.requestFocus()
+                AppLogger.d(
+                    "GoldyWebView",
+                    "Native bounds: x=" + view.x +
+                        " y=" + view.y +
+                        " w=" + view.width +
+                        " h=" + view.height +
+                        " root=" + view.rootView.width + "x" + view.rootView.height
+                )
+            }
+        }
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.VISUAL_STATE_CALLBACK)) {
+            WebViewCompat.postVisualStateCallback(
+                view,
+                System.nanoTime(),
+                object : WebViewCompat.VisualStateCallback {
+                    override fun onComplete(requestId: Long) {
+                        finishInitialization()
+                    }
+                }
+            )
+        } else {
+            view.postDelayed(finishInitialization, 80L)
+        }
+    }
 
     val bridge = remember {
         GoldyBridge(
@@ -149,12 +182,12 @@ fun GoldyHomeScreen(
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
+                            view?.let { initializeGoldyPage(it) }
                         }
 
                         override fun onPageCommitVisible(view: WebView, url: String) {
                             super.onPageCommitVisible(view, url)
-                            injectU(view)
-                            sendMoviesToWebView(view, movies)
+                            initializeGoldyPage(view)
                         }
 
                         override fun onReceivedError(
@@ -197,11 +230,7 @@ fun GoldyHomeScreen(
                     }
 
                     addJavascriptInterface(bridge, "Android")
-                    doOnLayout {
-                        if (this.url.isNullOrEmpty()) {
-                            loadUrl("https://appassets.androidplatform.net/goldy.html")
-                        }
-                    }
+                    loadUrl("https://appassets.androidplatform.net/goldy.html")
                     requestFocus()
                 }
             },
@@ -225,15 +254,25 @@ fun GoldyHomeScreen(
 /**
  * Injects a computed --u value into the WebView.
  *
- * goldy.html defines --u and --vh; the JavaScript payload is built below.
+ * goldy.html defines:
+ *   --u: min(calc(100vw / 739), calc(100dvh / 415));
+ *
+ * But 100dvh is not supported in all Android WebView versions,
+ * which makes --u invalid and collapses .stage to 0x0.
+ *
+ * This function computes --u in pixels using JavaScript and sets
+ * it as an inline style on :root, without modifying goldy.html.
+ *
+ * It also listens for resize/orientationchange and recomputes.
  */
 fun injectU(webView: WebView) {
     val js = """
         (function() {
             function calcU() {
                 var root = document.documentElement;
+                var body = document.body;
 
-                if (!root || !document.body) {
+                if (!root || !body) {
                     console.log('DIAG_DOM_NOT_READY');
                     return false;
                 }
@@ -246,44 +285,123 @@ fun injectU(webView: WebView) {
                     1,
                     window.innerHeight || root.clientHeight || 1
                 );
-
                 var isPortrait = h > w;
                 var u = isPortrait
                     ? (w / 400)
                     : Math.min(w / 739, h / 415);
 
-                // Keep --u computed in JavaScript for legacy WebView compatibility.
-                // Orientation/layout itself is controlled by goldy.html classes.
+                // Do not depend on dvh or viewport CSS math
+                // in the legacy WebView used by the verifier.
                 root.style.setProperty('--u', u + 'px', 'important');
-                root.style.setProperty('--vh', h + 'px', 'important');
+                
+                // The verifier WebView exposes a portrait visual viewport through
+                // innerWidth/innerHeight but reports the CSS orientation media query as landscape.
+                // Drive the affected layout directly from the actual viewport instead of relying
+                // on that broken CSS media query.
+                (function() {
+                    var innerW = window.innerWidth;
+                    var innerH = window.innerHeight;
+                    var actualPortrait = innerH > innerW;
 
-                var visualViewportWidth =
-                    window.visualViewport ? window.visualViewport.width : 0;
-                var visualViewportHeight =
-                    window.visualViewport ? window.visualViewport.height : 0;
+                    // Goldy's JavaScript renderer also uses matchMedia(). Make its orientation
+                    // decision consistent with the viewport we actually render into.
+                    if (!window.__GOLDY_ORIGINAL_MATCH_MEDIA__) {
+                        window.__GOLDY_ORIGINAL_MATCH_MEDIA__ = window.matchMedia.bind(window);
+                        window.matchMedia = function(query) {
+                            if (query === '(orientation: portrait)' || query === '(orientation:portrait)') {
+                                return { matches: window.innerHeight > window.innerWidth, media: query, onchange: null,
+                                    addListener: function(){}, removeListener: function(){},
+                                    addEventListener: function(){}, removeEventListener: function(){},
+                                    dispatchEvent: function(){ return false; } };
+                            }
+                            if (query === '(orientation: landscape)' || query === '(orientation:landscape)') {
+                                return { matches: window.innerWidth >= window.innerHeight, media: query, onchange: null,
+                                    addListener: function(){}, removeListener: function(){},
+                                    addEventListener: function(){}, removeEventListener: function(){},
+                                    dispatchEvent: function(){ return false; } };
+                            }
+                            return window.__GOLDY_ORIGINAL_MATCH_MEDIA__(query);
+                        };
+                    }
 
-                console.log(
-                    'DIAG_WEBVIEW_VERSION: ' +
-                    (navigator.userAgent || 'unknown')
-                );
+                    var html = document.documentElement;
+                    html.classList.toggle('goldy-force-portrait', actualPortrait);
+                    html.classList.toggle('goldy-force-landscape', !actualPortrait);
 
-                console.log(
-                    'DIAG_SCREEN_ORIENTATION: ' +
-                    (window.screen && window.screen.orientation
-                        ? window.screen.orientation.type
-                        : 'unknown')
-                );
+                    // Re-render after the orientation compatibility shim is installed.
+                    // The page may have rendered using the legacy WebView's incorrect
+                    // media-query result before injectU() ran (e.g. 6 posters in landscape).
+                    if (typeof window.render === 'function') {
+                        window.render();
+                    }
 
-                console.log(
-                    'DIAG_VISUAL_VIEWPORT: w=' +
-                    visualViewportWidth +
-                    ' h=' +
-                    visualViewportHeight
-                );
+                    function set(el, name, value) {
+                        if (el) el.style.setProperty(name, value, 'important');
+                    }
+                    function setMany(el, values) {
+                        if (!el) return;
+                        Object.keys(values).forEach(function(k) { set(el, k, values[k]); });
+                    }
 
-                if (typeof window.applyOrientation === 'function') {
-                    window.applyOrientation();
-                }
+                    var stage = document.querySelector('.stage');
+                    var rail = document.querySelector('.rail');
+                    var rows = document.querySelectorAll('.row');
+                    var posters = document.querySelectorAll('.poster');
+                    var account = document.querySelector('.account-info-portrait');
+                    var panel = document.querySelector('.panel');
+                    var logo = document.querySelector('.landscape-logo');
+                    function clear(el, names) {
+                        if (!el) return;
+                        names.forEach(function(name) { el.style.removeProperty(name); });
+                    }
+                    var portraitProperties = [
+                        'width','height','overflow','top','left','transform','margin','display',
+                        'flex-direction','align-items','justify-content','padding','box-sizing',
+                        'position','z-index','pointer-events','max-width','order','gap',
+                        'flex','grid-template-columns','font-size'
+                    ];
+
+                    if (actualPortrait) {
+                        setMany(html, { width: innerW + 'px', height: innerH + 'px', overflow: 'hidden' });
+                        setMany(document.body, { width: innerW + 'px', height: innerH + 'px', overflow: 'hidden' });
+                        setMany(stage, { width: innerW + 'px', height: innerH + 'px', top: '0px', left: '0px', transform: 'none', margin: '0', display: 'flex', 'flex-direction': 'column', 'align-items': 'center', 'justify-content': 'flex-start', padding: px(12) + ' ' + px(14) + ' ' + px(10), overflow: 'hidden', 'box-sizing': 'border-box' });
+                        if (stage) Array.prototype.forEach.call(stage.children, function(el) { setMany(el, { position: 'relative', left: 'auto', top: 'auto' }); });
+                        setMany(logo, { display: 'flex', position: 'absolute', left: '50%', top: px(10), transform: 'translateX(-50%)', width: px(200), height: px(135), 'align-items': 'center', 'justify-content': 'center', 'z-index': '100', 'pointer-events': 'none' });
+                        ['.account-info-landscape','h1','.cat','.tl','.br','.feat','.info'].forEach(function(sel){ document.querySelectorAll(sel).forEach(function(el){ set(el,'display','none'); }); });
+                        setMany(rail, { width: '100%', 'margin-top': px(20), display: 'flex', 'flex-direction': 'column', 'align-items': 'center', left: 'auto', top: 'auto', 'max-width': 'none', padding: '0', order: '2' });
+                        Array.prototype.forEach.call(rows, function(row, i){ setMany(row, { width: '100%', display: 'flex', 'justify-content': 'center', gap: px(11), padding: px(5), overflow: 'visible', 'margin-top': i === 0 ? '0' : px(13) }); });
+                        Array.prototype.forEach.call(posters, function(p){ setMany(p, { width: px(105), height: px(172), flex: 'none' }); });
+                        setMany(account, { display: 'block', width: '100%', 'margin-top': px(2), 'margin-bottom': px(5), padding: px(7) + ' ' + px(10), transform: 'none', order: '3', 'box-sizing': 'border-box' });
+                        setMany(panel, { width: '100%', height: 'auto', 'margin-top': 'auto', padding: px(8), display: 'grid', 'grid-template-columns': '1fr 1fr', gap: px(8), left: 'auto', top: 'auto', transform: 'translateY(' + px(-10) + ')', order: '4' });
+                        document.querySelectorAll('.btn, .btn.act').forEach(function(btn){ setMany(btn, { width: '100%', height: px(52), 'justify-content': 'center', padding: '0', gap: px(8), 'font-size': px(14), flex: 'none' }); });
+                        document.querySelectorAll('.btn svg').forEach(function(svg){ setMany(svg, { width: px(26), height: px(27) }); });
+                    } else {
+                        // Remove only the properties owned by the portrait override so the
+                        // original landscape CSS becomes authoritative again after rotation.
+                        clear(html, ['width','height','overflow']);
+                        clear(document.body, ['width','height','overflow']);
+                        clear(stage, portraitProperties);
+                        if (stage) Array.prototype.forEach.call(stage.children, function(el) { clear(el, portraitProperties); });
+                        clear(logo, ['display','position','left','top','transform','width','height','align-items','justify-content','z-index','pointer-events']);
+                        ['.account-info-landscape','h1','.cat','.tl','.br','.feat','.info'].forEach(function(sel){ document.querySelectorAll(sel).forEach(function(el){ clear(el, ['display']); }); });
+                        clear(rail, portraitProperties);
+                        Array.prototype.forEach.call(rows, function(row){ clear(row, ['width','display','justify-content','gap','padding','overflow','margin-top']); });
+                        Array.prototype.forEach.call(posters, function(p){ clear(p, ['width','height','flex']); });
+                        clear(account, portraitProperties);
+                        clear(panel, portraitProperties);
+                        document.querySelectorAll('.btn, .btn.act').forEach(function(btn){ clear(btn, ['width','height','justify-content','padding','gap','font-size','flex']); });
+                        document.querySelectorAll('.btn svg').forEach(function(svg){ clear(svg, ['width','height']); });
+                    }
+
+                    console.log('DIAG_ORIENTATION_COMPAT: w=' + innerW + ' h=' + innerH +
+                        ' portrait=' + actualPortrait + ' mqPortrait=' + window.matchMedia('(orientation: portrait)').matches + ' u=' + u);
+                })();
+                root.style.setProperty('width', '100%', 'important');
+                root.style.setProperty('height', h + 'px', 'important');
+                body.style.setProperty('width', '100%', 'important');
+                body.style.setProperty('height', h + 'px', 'important');
+
+                var stage = document.querySelector('.stage');
 
                 console.log(
                     'DIAG_VIEWPORT: w=' + w +
@@ -292,31 +410,22 @@ fun injectU(webView: WebView) {
                     ' portrait=' + isPortrait
                 );
 
-                console.log(
-                    'DIAG_ORIENTATION_CLASS: portrait=' +
-                    root.classList.contains('goldy-portrait') +
-                    ' landscape=' +
-                    root.classList.contains('goldy-landscape') +
-                    ' smallPortrait=' +
-                    root.classList.contains('goldy-small-portrait') +
-                    ' shortLandscape=' +
-                    root.classList.contains('goldy-short-landscape')
-                );
-
-                console.log(
-                    'DIAG_ROOT_U: ' +
-                    root.style.getPropertyValue('--u')
-                );
-
-                var stage = document.querySelector('.stage');
-
                 if (!stage) {
                     console.log('DIAG_STAGE_NOT_FOUND');
                     return false;
                 }
 
-                var stageCS = window.getComputedStyle(stage);
+                // Do not override .stage dimensions here.
+                // goldy.html remains the single source of truth for
+                // portrait/landscape stage sizing. The WebView viewport
+                // settings above are responsible for giving its CSS the
+                // correct orientation context.
 
+                void root.offsetHeight;
+                void body.offsetHeight;
+                void stage.offsetHeight;
+
+                var stageCS = window.getComputedStyle(stage);
                 console.log(
                     'DIAG_STAGE: offsetW=' + stage.offsetWidth +
                     ' offsetH=' + stage.offsetHeight +
@@ -329,6 +438,54 @@ fun injectU(webView: WebView) {
                     ' top=' + stageCS.top +
                     ' left=' + stageCS.left +
                     ' transform=' + stageCS.transform
+                );
+
+                var panel = document.querySelector('.panel');
+                if (panel) {
+                    var panelCS = window.getComputedStyle(panel);
+                    console.log(
+                        'DIAG_PANEL: offsetW=' + panel.offsetWidth +
+                        ' offsetH=' + panel.offsetHeight +
+                        ' display=' + panelCS.display +
+                        ' visibility=' + panelCS.visibility +
+                        ' opacity=' + panelCS.opacity
+                    );
+                }
+
+                var account = document.querySelector('.account-info-portrait');
+                if (account) {
+                    var accountCS = window.getComputedStyle(account);
+                    console.log(
+                        'DIAG_ACCOUNT: offsetW=' + account.offsetWidth +
+                        ' offsetH=' + account.offsetHeight +
+                        ' display=' + accountCS.display +
+                        ' visibility=' + accountCS.visibility +
+                        ' opacity=' + accountCS.opacity +
+                        ' transform=' + accountCS.transform
+                    );
+                }
+
+                var logo = document.querySelector('.landscape-logo');
+                if (logo) {
+                    var logoCS = window.getComputedStyle(logo);
+                    console.log(
+                        'DIAG_LOGO: offsetW=' + logo.offsetWidth +
+                        ' offsetH=' + logo.offsetHeight +
+                        ' display=' + logoCS.display +
+                        ' visibility=' + logoCS.visibility +
+                        ' opacity=' + logoCS.opacity
+                    );
+                }
+
+                console.log(
+                    'DIAG_ROOT_U: ' +
+                    root.style.getPropertyValue('--u')
+                );
+                console.log(
+                    'DIAG_MEDIA: portrait=' +
+                    window.matchMedia('(orientation: portrait)').matches +
+                    ' landscape=' +
+                    window.matchMedia('(orientation: landscape)').matches
                 );
 
                 console.log('DIAG_LAYOUT_READY');
@@ -348,6 +505,24 @@ fun injectU(webView: WebView) {
                 }
 
                 console.log('DIAG_LAYOUT_FAILED_AFTER_RETRY');
+            }
+
+            function recalcAfterResize() {
+                setTimeout(function() {
+                    calcU();
+                }, 0);
+            }
+
+            if (!window.__GOLDY_LAYOUT_LISTENERS_BOUND__) {
+                window.__GOLDY_LAYOUT_LISTENERS_BOUND__ = true;
+                window.addEventListener(
+                    'resize',
+                    recalcAfterResize
+                );
+                window.addEventListener(
+                    'orientationchange',
+                    recalcAfterResize
+                );
             }
 
             ensureLayout(0);
