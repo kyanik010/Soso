@@ -243,17 +243,43 @@ fun injectU(webView: WebView) {
                     void document.body.offsetHeight;
                 }
 
-                // Fix: bypass calc(739 * var(--u)) by setting explicit width/height.
-                // 100dvh may be unsupported in older WebView, making --u invalid at computed-value time.
+                var u = 0;
+                var w = window.innerWidth;
+                var h = window.innerHeight;
+                var isPortrait = h > w;
+
+                if (isPortrait) {
+                    u = w / 400;
+                } else {
+                    u = Math.min(w / 739, h / 415);
+                }
+
+                document.documentElement.style.setProperty('--u', u + 'px');
+                void document.documentElement.offsetHeight;
+                if (document.body) {
+                    void document.body.offsetHeight;
+                }
+
+                // DIAG: always print
+                console.log('DIAG_VIEWPORT: w=' + w + ' h=' + h + ' u=' + u + ' portrait=' + isPortrait);
+
                 var stage = document.querySelector('.stage');
-                if (stage) {
-                    var stageW = 739 * u;
-                    var stageH = 415 * u;
-                    stage.style.setProperty('width', stageW + 'px', 'important');
-                    stage.style.setProperty('height', stageH + 'px', 'important');
+
+                if (!stage) {
+                    console.log('DIAG_STAGE_NOT_FOUND');
+                } else {
+                    // Portrait: keep 100% x innerHeight
+                    // Landscape: explicit 739*u x 415*u
+                    if (isPortrait) {
+                        stage.style.setProperty('width', '100%', 'important');
+                        stage.style.setProperty('height', h + 'px', 'important');
+                    } else {
+                        stage.style.setProperty('width', (739 * u) + 'px', 'important');
+                        stage.style.setProperty('height', (415 * u) + 'px', 'important');
+                    }
+
                     void stage.offsetHeight;
 
-                    // DIAGNOSTIC: log actual rendered sizes
                     var stageCS = window.getComputedStyle(stage);
                     console.log('DIAG_STAGE: offsetW=' + stage.offsetWidth +
                         ' offsetH=' + stage.offsetHeight +
@@ -267,63 +293,67 @@ fun injectU(webView: WebView) {
                         ' zIndex=' + stageCS.zIndex +
                         ' position=' + stageCS.position +
                         ' overflow=' + stageCS.overflow);
-
-                    var panel = document.querySelector('.panel');
-                    if (panel) {
-                        var panelCS = window.getComputedStyle(panel);
-                        console.log('DIAG_PANEL: offsetW=' + panel.offsetWidth +
-                            ' offsetH=' + panel.offsetHeight +
-                            ' display=' + panelCS.display +
-                            ' visibility=' + panelCS.visibility +
-                            ' opacity=' + panelCS.opacity +
-                            ' zIndex=' + panelCS.zIndex +
-                            ' position=' + panelCS.position);
-                    }
-
-                    var account = document.querySelector('.account-info-portrait');
-                    if (account) {
-                        var accountCS = window.getComputedStyle(account);
-                        console.log('DIAG_ACCOUNT: offsetW=' + account.offsetWidth +
-                            ' offsetH=' + account.offsetHeight +
-                            ' display=' + accountCS.display +
-                            ' visibility=' + accountCS.visibility +
-                            ' opacity=' + accountCS.opacity +
-                            ' transform=' + accountCS.transform);
-                    }
-
-                    var logo = document.querySelector('.landscape-logo');
-                    if (logo) {
-                        var logoCS = window.getComputedStyle(logo);
-                        console.log('DIAG_LOGO: offsetW=' + logo.offsetWidth +
-                            ' offsetH=' + logo.offsetHeight +
-                            ' display=' + logoCS.display +
-                            ' visibility=' + logoCS.visibility +
-                            ' opacity=' + logoCS.opacity +
-                            ' position=' + logoCS.position +
-                            ' top=' + logoCS.top +
-                            ' left=' + logoCS.left);
-                    }
-
-                    // Count body children and their z-index
-                    var bodyChildren = document.body.children;
-                    console.log('DIAG_BODY: count=' + bodyChildren.length);
-                    for (var i = 0; i < bodyChildren.length; i++) {
-                        var c = bodyChildren[i];
-                        var cCS = window.getComputedStyle(c);
-                        console.log('DIAG_BODY_' + i + ': tag=' + c.tagName +
-                            ' class=' + c.className +
-                            ' zIndex=' + cCS.zIndex +
-                            ' position=' + cCS.position +
-                            ' display=' + cCS.display);
-                    }
-
-                    // Also log the value of --u currently in :root
-                    console.log('DIAG_ROOT_U: ' + getComputedStyle(document.documentElement).getPropertyValue('--u'));
-
-                    // Log matchMedia result
-                    console.log('DIAG_MEDIA: portrait=' + window.matchMedia('(orientation: portrait)').matches +
-                        ' landscape=' + window.matchMedia('(orientation: landscape)').matches);
                 }
+
+                // DIAG: panel
+                var panel = document.querySelector('.panel');
+                if (panel) {
+                    var panelCS = window.getComputedStyle(panel);
+                    console.log('DIAG_PANEL: offsetW=' + panel.offsetWidth +
+                        ' offsetH=' + panel.offsetHeight +
+                        ' display=' + panelCS.display +
+                        ' visibility=' + panelCS.visibility +
+                        ' opacity=' + panelCS.opacity +
+                        ' zIndex=' + panelCS.zIndex +
+                        ' position=' + panelCS.position);
+                } else {
+                    console.log('DIAG_PANEL_NOT_FOUND');
+                }
+
+                // DIAG: account
+                var account = document.querySelector('.account-info-portrait');
+                if (account) {
+                    var accountCS = window.getComputedStyle(account);
+                    console.log('DIAG_ACCOUNT: offsetW=' + account.offsetWidth +
+                        ' offsetH=' + account.offsetHeight +
+                        ' display=' + accountCS.display +
+                        ' visibility=' + accountCS.visibility +
+                        ' opacity=' + accountCS.opacity +
+                        ' transform=' + accountCS.transform);
+                } else {
+                    console.log('DIAG_ACCOUNT_NOT_FOUND');
+                }
+
+                // DIAG: logo
+                var logo = document.querySelector('.landscape-logo');
+                if (logo) {
+                    var logoCS = window.getComputedStyle(logo);
+                    console.log('DIAG_LOGO: offsetW=' + logo.offsetWidth +
+                        ' offsetH=' + logo.offsetHeight +
+                        ' display=' + logoCS.display +
+                        ' visibility=' + logoCS.visibility +
+                        ' opacity=' + logoCS.opacity +
+                        ' position=' + logoCS.position);
+                } else {
+                    console.log('DIAG_LOGO_NOT_FOUND');
+                }
+
+                // DIAG: body children
+                var bodyChildren = document.body.children;
+                console.log('DIAG_BODY: count=' + bodyChildren.length);
+                for (var i = 0; i < bodyChildren.length; i++) {
+                    var c = bodyChildren[i];
+                    var cCS = window.getComputedStyle(c);
+                    console.log('DIAG_BODY_' + i + ': tag=' + c.tagName +
+                        ' class=' + c.className +
+                        ' zIndex=' + cCS.zIndex +
+                        ' position=' + cCS.position +
+                        ' display=' + cCS.display);
+                }
+
+                console.log('DIAG_ROOT_U: ' + getComputedStyle(document.documentElement).getPropertyValue('--u'));
+                console.log('DIAG_MEDIA: portrait=' + window.matchMedia('(orientation: portrait)').matches +
+                    ' landscape=' + window.matchMedia('(orientation: landscape)').matches);
 
                 console.log('INJECT_U_DEBUG: w=' + w + ' h=' + h + ' u=' + u + ' (reflow+dvh fix)');
                 return u;
