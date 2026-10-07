@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.view.doOnLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
@@ -197,7 +198,7 @@ fun GoldyHomeScreen(
 
                     addJavascriptInterface(bridge, "Android")
                     doOnLayout {
-                        if (url.isEmpty()) {
+                        if (this.url.isNullOrEmpty()) {
                             loadUrl("https://appassets.androidplatform.net/goldy.html")
                         }
                     }
@@ -224,7 +225,8 @@ fun GoldyHomeScreen(
 /**
  * Injects a computed --u value into the WebView.
  *
- * goldy.html defines:
+ * goldy.html defines --u and --vh; the JavaScript payload is built below.
+ */
 fun injectU(webView: WebView) {
     val js = """
         (function() {
