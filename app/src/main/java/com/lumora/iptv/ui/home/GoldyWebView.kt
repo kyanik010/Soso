@@ -57,7 +57,7 @@ fun GoldyHomeScreen(
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
     fun initializeGoldyPage(view: WebView) {
-        val finishInitialization = {
+        val finishInitialization: () -> Unit = {
             injectU(view)
             sendMoviesToWebView(view, movies)
             view.post {
@@ -79,7 +79,7 @@ fun GoldyHomeScreen(
             WebViewCompat.postVisualStateCallback(
                 view,
                 System.nanoTime(),
-                object : WebViewCompat.VisualStateCallback() {
+                object : WebViewCompat.VisualStateCallback {
                     override fun onComplete(requestId: Long) {
                         finishInitialization()
                     }
@@ -180,9 +180,9 @@ fun GoldyHomeScreen(
                             view?.let { initializeGoldyPage(it) }
                         }
 
-                        override fun onPageCommitVisible(view: WebView?, url: String?) {
+                        override fun onPageCommitVisible(view: WebView, url: String) {
                             super.onPageCommitVisible(view, url)
-                            view?.let { initializeGoldyPage(it) }
+                            initializeGoldyPage(view)
                         }
 
                         override fun onReceivedError(
