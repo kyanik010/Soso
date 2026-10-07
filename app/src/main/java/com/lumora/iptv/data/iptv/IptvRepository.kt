@@ -307,6 +307,20 @@ class IptvRepository(
             _syncState.value = SyncState(isSyncing = true, message = "جاري تحليل القنوات...", progressPercent = 50)
             val result = M3uParser.parse(content)
 
+            // Persist the source type so playback can be restored correctly after process death.
+            secureStore.saveCredentials(
+                Credentials(
+                    serverUrl = "",
+                    username = "",
+                    password = "",
+                    sourceType = "m3u",
+                    m3uUrl = m3uUrlOrContent.takeIf {
+                        it.startsWith("http://") || it.startsWith("https://")
+                    },
+                    expiryDate = "غير محدد"
+                )
+            )
+
             // Save Account
             dao.insertAccount(
                 AccountEntity(
