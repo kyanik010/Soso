@@ -210,7 +210,12 @@ fun PlayerScreen(
     val streamUrl = if (playbackSource is PlaybackSource.M3uUrl) {
         playbackSource.url
     } else {
-        val credentials = credentialsResult!!.getOrThrow()!!
+        val credentials = credentialsResult?.getOrNull()
+        if (credentials == null) {
+            AppLogger.e("PlayerScreen", "Unexpected null credentials after guards")
+            onBack()
+            return
+        }
         PlaybackUrlBuilder(
             credentials.serverUrl,
             credentials.username,
