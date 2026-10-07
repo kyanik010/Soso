@@ -2,6 +2,7 @@ package com.lumora.iptv.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -32,7 +33,7 @@ fun AppNavHost(
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
-        modifier = modifier
+        modifier = modifier.fillMaxSize()
     ) {
         // 1. Splash Screen
         composable(Screen.Splash.route) {
