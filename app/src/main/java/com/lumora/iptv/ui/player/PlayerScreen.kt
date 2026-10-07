@@ -106,7 +106,10 @@ fun PlayerScreen(
         value = runCatching { repository.getPlaybackSource(sourceId) }
     }
 
-    if (sourceResult == null) {
+    // Snapshot to local val to enable smart cast on delegated property
+    val currentResult = sourceResult
+
+    if (currentResult == null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -122,8 +125,8 @@ fun PlayerScreen(
         return
     }
 
-    val playbackSource = sourceResult.getOrNull()
-    if (sourceResult.isFailure || playbackSource == null) {
+    val playbackSource = currentResult.getOrNull()
+    if (currentResult.isFailure || playbackSource == null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
