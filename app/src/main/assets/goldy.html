@@ -9,6 +9,7 @@
 
 :root{
   --u:min(calc(100vw / 739),calc(100vh / 415));
+  --vh:100vh;
   --cyan:#00d4ff;
   --cyan-light:#7dd3fc;
   --bg:#020617;
@@ -864,7 +865,7 @@ html.goldy-portrait body{
   html.goldy-portrait .stage{
 
     width:100%;
-    height:100%;
+    height:var(--vh);
 
     top:0;
     transform:none;
@@ -1266,6 +1267,13 @@ html.goldy-portrait .poster:focus-visible{
 
  
 </style>
+<script>
+(function () {
+  var portrait = window.innerHeight > window.innerWidth;
+  document.documentElement.classList.toggle('goldy-portrait', portrait);
+  document.documentElement.classList.toggle('goldy-landscape', !portrait);
+})();
+</script>
 </head>
 
 
@@ -2038,6 +2046,10 @@ const $ =
 
 window.IPTV = {
 
+  refresh(){
+    render();
+  },
+
   onNavigate(key){},
 
   onOpen(movie){},
@@ -2485,36 +2497,44 @@ function render(){
    ========================================================= */
 
 function applyOrientation(){
-  var portrait =
+  var p =
     window.innerHeight > window.innerWidth;
 
-  var shortLandscape =
-    !portrait &&
-    window.innerHeight <= 360;
-
-  var smallPortrait =
-    portrait &&
-    window.innerWidth <= 370;
+  var prev =
+    document.documentElement.classList.contains(
+      "goldy-portrait"
+    );
 
   document.documentElement.classList.toggle(
     "goldy-portrait",
-    portrait
+    p
   );
 
   document.documentElement.classList.toggle(
     "goldy-landscape",
-    !portrait
+    !p
   );
 
   document.documentElement.classList.toggle(
     "goldy-small-portrait",
-    smallPortrait
+    p && window.innerWidth <= 370
   );
 
   document.documentElement.classList.toggle(
     "goldy-short-landscape",
-    shortLandscape
+    !p && window.innerHeight <= 360
   );
+
+  if (prev !== p) {
+    if (
+      typeof window.IPTV !== "undefined" &&
+      typeof window.IPTV.refresh === "function"
+    ) {
+      window.IPTV.refresh();
+    } else if (typeof render === "function") {
+      render();
+    }
+  }
 }
 
 applyOrientation();
@@ -2539,16 +2559,7 @@ window.addEventListener(
       );
 
 
-    if(
-      portrait !== lastPortrait
-    ){
-
-      lastPortrait =
-        portrait;
-
-      render();
-
-    }
+    lastPortrait = portrait;
 
   },
   {
