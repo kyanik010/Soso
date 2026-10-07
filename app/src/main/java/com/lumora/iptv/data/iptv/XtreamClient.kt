@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 class XtreamClient(
@@ -34,7 +35,9 @@ class XtreamClient(
 
     suspend fun authenticate(baseUrl: String, user: String, pass: String): XtreamAuthResponse = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
-        val url = "$host/player_api.php?username=$user&password=$pass"
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass"
         AppLogger.d("XtreamClient", "Authenticating against server")
 
         val request = Request.Builder().url(url).build()
@@ -48,7 +51,9 @@ class XtreamClient(
 
     suspend fun getLiveCategories(baseUrl: String, user: String, pass: String): List<Category> = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
-        val url = "$host/player_api.php?username=$user&password=$pass&action=get_live_categories"
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass&action=get_live_categories"
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
@@ -63,8 +68,10 @@ class XtreamClient(
 
     suspend fun getLiveStreams(baseUrl: String, user: String, pass: String, categoryId: String?): List<Channel> = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
         val catParam = if (!categoryId.isNullOrBlank() && categoryId != "all") "&category_id=$categoryId" else ""
-        val url = "$host/player_api.php?username=$user&password=$pass&action=get_live_streams$catParam"
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass&action=get_live_streams$catParam"
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
@@ -92,7 +99,9 @@ class XtreamClient(
 
     suspend fun getVodCategories(baseUrl: String, user: String, pass: String): List<Category> = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
-        val url = "$host/player_api.php?username=$user&password=$pass&action=get_vod_categories"
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass&action=get_vod_categories"
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
@@ -107,8 +116,10 @@ class XtreamClient(
 
     suspend fun getVodStreams(baseUrl: String, user: String, pass: String, categoryId: String?): List<Movie> = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
         val catParam = if (!categoryId.isNullOrBlank() && categoryId != "all") "&category_id=$categoryId" else ""
-        val url = "$host/player_api.php?username=$user&password=$pass&action=get_vod_streams$catParam"
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass&action=get_vod_streams$catParam"
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
@@ -136,7 +147,9 @@ class XtreamClient(
 
     suspend fun getSeriesCategories(baseUrl: String, user: String, pass: String): List<Category> = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
-        val url = "$host/player_api.php?username=$user&password=$pass&action=get_series_categories"
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass&action=get_series_categories"
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
@@ -151,8 +164,10 @@ class XtreamClient(
 
     suspend fun getSeries(baseUrl: String, user: String, pass: String, categoryId: String?): List<Series> = withContext(Dispatchers.IO) {
         val host = PlaybackUrlBuilder.normalizeBaseUrl(baseUrl)
+        val encodedUser = URLEncoder.encode(user, "UTF-8")
+        val encodedPass = URLEncoder.encode(pass, "UTF-8")
         val catParam = if (!categoryId.isNullOrBlank() && categoryId != "all") "&category_id=$categoryId" else ""
-        val url = "$host/player_api.php?username=$user&password=$pass&action=get_series$catParam"
+        val url = "$host/player_api.php?username=$encodedUser&password=$encodedPass&action=get_series$catParam"
         val request = Request.Builder().url(url).build()
 
         client.newCall(request).execute().use { response ->
@@ -161,7 +176,6 @@ class XtreamClient(
             val listType = Types.newParameterizedType(List::class.java, XtreamSeriesItem::class.java)
             val adapter = moshi.adapter<List<XtreamSeriesItem>>(listType)
             val list = adapter.fromJson(body) ?: emptyList()
-
             list.mapNotNull { item ->
                 val seriesId = item.seriesId ?: return@mapNotNull null
                 Series(
