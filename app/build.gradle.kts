@@ -24,18 +24,19 @@ android {
 
   signingConfigs {
     create("release") {
-      val customPath = System.getenv("KEYSTORE_PATH")
-      val customFile = if (customPath != null) file(customPath) else file("${rootDir}/my-upload-key.jks")
-      if (customFile.exists() && System.getenv("STORE_PASSWORD") != null) {
-        storeFile = customFile
-        storePassword = System.getenv("STORE_PASSWORD")
-        keyAlias = "upload"
-        keyPassword = System.getenv("KEY_PASSWORD")
+      val keystorePropsFile = rootProject.file("keystore.properties")
+      if (keystorePropsFile.exists()) {
+        val props = java.util.Properties()
+        props.load(keystorePropsFile.inputStream())
+        storeFile = file(props["storeFile"] as String)
+        storePassword = props["storePassword"] as String
+        keyAlias = props["keyAlias"] as String
+        keyPassword = props["keyPassword"] as String
       } else {
-        storeFile = file("${rootDir}/debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
+        throw GradleException(
+          "keystore.properties is required for release builds. " +
+            "Create it in the project root before running assembleRelease."
+        )
       }
     }
     create("debugConfig") {
