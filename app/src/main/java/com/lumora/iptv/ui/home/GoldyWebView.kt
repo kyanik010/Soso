@@ -246,8 +246,15 @@ fun injectU(webView: WebView) {
                 // Fix 100dvh fallback in portrait mode
                 var stage = document.querySelector('.stage');
                 if (stage) {
-                    stage.style.height = h + 'px';
-                    stage.style.width = '100%';
+                    if (h > w) {
+                        // Portrait only
+                        stage.style.height = h + 'px';
+                        stage.style.width = '100%';
+                    } else {
+                        // Landscape: clear overrides, let CSS handle it
+                        stage.style.height = '';
+                        stage.style.width = '';
+                    }
                     void stage.offsetHeight;
                 }
 
