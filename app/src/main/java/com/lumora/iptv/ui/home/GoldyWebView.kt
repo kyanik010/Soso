@@ -294,181 +294,74 @@ fun injectU(webView: WebView) {
                 // in the legacy WebView used by the verifier.
                 root.style.setProperty('--u', u + 'px', 'important');
                 
-                // ============================================
-                // ================================================
-                // PHASE 3: CSS Orientation Compatibility Layer
-                // ================================================
-                // Mirrors goldy.html @media (orientation: portrait) rules.
-                // All values are explicit pixels (no calc(var(--u))).
-                // Uses `order` for correct visual stacking.
-
+                // The verifier WebView exposes a portrait visual viewport through
+                // innerWidth/innerHeight but reports the CSS orientation media query as landscape.
+                // Drive the affected layout directly from the actual viewport instead of relying
+                // on that broken CSS media query.
                 (function() {
                     var innerW = window.innerWidth;
                     var innerH = window.innerHeight;
                     var actualPortrait = innerH > innerW;
-                    var mqPortrait = window.matchMedia('(orientation: portrait)').matches;
+
+                    // Goldy's JavaScript renderer also uses matchMedia(). Make its orientation
+                    // decision consistent with the viewport we actually render into.
+                    if (!window.__GOLDY_ORIGINAL_MATCH_MEDIA__) {
+                        window.__GOLDY_ORIGINAL_MATCH_MEDIA__ = window.matchMedia.bind(window);
+                        window.matchMedia = function(query) {
+                            if (query === '(orientation: portrait)' || query === '(orientation:portrait)') {
+                                return { matches: window.innerHeight > window.innerWidth, media: query, onchange: null,
+                                    addListener: function(){}, removeListener: function(){},
+                                    addEventListener: function(){}, removeEventListener: function(){},
+                                    dispatchEvent: function(){ return false; } };
+                            }
+                            if (query === '(orientation: landscape)' || query === '(orientation:landscape)') {
+                                return { matches: window.innerWidth >= window.innerHeight, media: query, onchange: null,
+                                    addListener: function(){}, removeListener: function(){},
+                                    addEventListener: function(){}, removeEventListener: function(){},
+                                    dispatchEvent: function(){ return false; } };
+                            }
+                            return window.__GOLDY_ORIGINAL_MATCH_MEDIA__(query);
+                        };
+                    }
 
                     var html = document.documentElement;
                     html.classList.toggle('goldy-force-portrait', actualPortrait);
                     html.classList.toggle('goldy-force-landscape', !actualPortrait);
 
-                    var u = actualPortrait
-                        ? (innerW / 400)
-                        : Math.min(innerW / 739, innerH / 415);
-
-                    function px(n) { return (n * u) + 'px'; }
-
-                    var style = document.getElementById('goldy-orientation-compat');
-                    if (!style) {
-                        style = document.createElement('style');
-                        style.id = 'goldy-orientation-compat';
-                        document.head.appendChild(style);
+                    function set(el, name, value) {
+                        if (el) el.style.setProperty(name, value, 'important');
+                    }
+                    function setMany(el, values) {
+                        if (!el) return;
+                        Object.keys(values).forEach(function(k) { set(el, k, values[k]); });
                     }
 
-                    // Compatibility only: keep goldy.html as the layout source of truth.
-                    // The legacy WebView cannot reliably resolve 100dvh, so only the
-                    // viewport/stage dimensions and rules required for the existing
-                    // portrait structure are supplied here. Rebuild the stylesheet on
-                    // every calculation so rotation/resize never leaves stale dimensions.
-                    style.textContent = [
-                        'html.goldy-force-portrait,',
-                        'html.goldy-force-portrait body {',
-                        '  width: ' + innerW + 'px !important;',
-                        '  height: ' + innerH + 'px !important;',
-                        '  margin: 0 !important;',
-                        '  padding: 0 !important;',
-                        '  overflow: hidden !important;',
-                        '  background: #020617 !important;',
-                        '}',
+                    var stage = document.querySelector('.stage');
+                    var rail = document.querySelector('.rail');
+                    var rows = document.querySelectorAll('.row');
+                    var posters = document.querySelectorAll('.poster');
+                    var account = document.querySelector('.account-info-portrait');
+                    var panel = document.querySelector('.panel');
+                    var logo = document.querySelector('.landscape-logo');
 
-                        'html.goldy-force-portrait .stage {',
-                        '  width: ' + innerW + 'px !important;',
-                        '  height: ' + innerH + 'px !important;',
-                        '  top: 0 !important;',
-                        '  left: 0 !important;',
-                        '  transform: none !important;',
-                        '  margin: 0 !important;',
-                        '  display: flex !important;',
-                        '  flex-direction: column !important;',
-                        '  align-items: center !important;',
-                        '  justify-content: flex-start !important;',
-                        '  padding: ' + px(12) + ' ' + px(14) + ' ' + px(10) + ' !important;',
-                        '  overflow: hidden !important;',
-                        '  box-sizing: border-box !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .stage > * {',
-                        '  position: relative !important;',
-                        '  left: auto !important;',
-                        '  top: auto !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .landscape-logo {',
-                        '  display: flex !important;',
-                        '  position: absolute !important;',
-                        '  left: 50% !important;',
-                        '  top: ' + px(10) + ' !important;',
-                        '  transform: translateX(-50%) !important;',
-                        '  width: ' + px(200) + ' !important;',
-                        '  height: ' + px(135) + ' !important;',
-                        '  align-items: center !important;',
-                        '  justify-content: center !important;',
-                        '  z-index: 100 !important;',
-                        '  pointer-events: none !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .account-info-landscape,',
-                        'html.goldy-force-portrait h1,',
-                        'html.goldy-force-portrait .cat,',
-                        'html.goldy-force-portrait .tl,',
-                        'html.goldy-force-portrait .br,',
-                        'html.goldy-force-portrait .feat,',
-                        'html.goldy-force-portrait .info {',
-                        '  display: none !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .rail {',
-                        '  width: 100% !important;',
-                        '  margin-top: ' + px(20) + ' !important;',
-                        '  display: flex !important;',
-                        '  flex-direction: column !important;',
-                        '  align-items: center !important;',
-                        '  left: auto !important;',
-                        '  top: auto !important;',
-                        '  max-width: none !important;',
-                        '  padding: 0 !important;',
-                        '  order: 2 !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .row {',
-                        '  width: 100% !important;',
-                        '  display: flex !important;',
-                        '  justify-content: center !important;',
-                        '  gap: ' + px(11) + ' !important;',
-                        '  padding: ' + px(5) + ' !important;',
-                        '  overflow: visible !important;',
-                        '  margin-top: 0 !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .row + .row {',
-                        '  margin-top: ' + px(13) + ' !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .poster {',
-                        '  width: ' + px(105) + ' !important;',
-                        '  height: ' + px(172) + ' !important;',
-                        '  flex: none !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .account-info-portrait {',
-                        '  display: block !important;',
-                        '  width: 100% !important;',
-                        '  margin-top: ' + px(2) + ' !important;',
-                        '  margin-bottom: ' + px(5) + ' !important;',
-                        '  padding: ' + px(7) + ' ' + px(10) + ' !important;',
-                        '  transform: none !important;',
-                        '  order: 3 !important;',
-                        '  box-sizing: border-box !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .panel {',
-                        '  width: 100% !important;',
-                        '  height: auto !important;',
-                        '  margin-top: auto !important;',
-                        '  padding: ' + px(8) + ' !important;',
-                        '  display: grid !important;',
-                        '  grid-template-columns: 1fr 1fr !important;',
-                        '  gap: ' + px(8) + ' !important;',
-                        '  left: auto !important;',
-                        '  top: auto !important;',
-                        '  transform: translateY(' + px(-10) + ') !important;',
-                        '  order: 4 !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .btn,',
-                        'html.goldy-force-portrait .btn.act {',
-                        '  width: 100% !important;',
-                        '  height: ' + px(52) + ' !important;',
-                        '  justify-content: center !important;',
-                        '  padding: 0 !important;',
-                        '  gap: ' + px(8) + ' !important;',
-                        '  font-size: ' + px(14) + ' !important;',
-                        '  flex: none !important;',
-                        '}',
-
-                        'html.goldy-force-portrait .btn svg {',
-                        '  width: ' + px(26) + ' !important;',
-                        '  height: ' + px(27) + ' !important;',
-                        '}',
-
-                        'html.goldy-force-landscape .account-info-portrait {',
-                        '  display: none !important;',
-                        '}'
-                    ].join('\\n');
+                    if (actualPortrait) {
+                        setMany(html, { width: innerW + 'px', height: innerH + 'px', overflow: 'hidden' });
+                        setMany(document.body, { width: innerW + 'px', height: innerH + 'px', overflow: 'hidden' });
+                        setMany(stage, { width: innerW + 'px', height: innerH + 'px', top: '0px', left: '0px', transform: 'none', margin: '0', display: 'flex', 'flex-direction': 'column', 'align-items': 'center', 'justify-content': 'flex-start', padding: px(12) + ' ' + px(14) + ' ' + px(10), overflow: 'hidden', 'box-sizing': 'border-box' });
+                        if (stage) Array.prototype.forEach.call(stage.children, function(el) { setMany(el, { position: 'relative', left: 'auto', top: 'auto' }); });
+                        setMany(logo, { display: 'flex', position: 'absolute', left: '50%', top: px(10), transform: 'translateX(-50%)', width: px(200), height: px(135), 'align-items': 'center', 'justify-content': 'center', 'z-index': '100', 'pointer-events': 'none' });
+                        ['.account-info-landscape','h1','.cat','.tl','.br','.feat','.info'].forEach(function(sel){ document.querySelectorAll(sel).forEach(function(el){ set(el,'display','none'); }); });
+                        setMany(rail, { width: '100%', 'margin-top': px(20), display: 'flex', 'flex-direction': 'column', 'align-items': 'center', left: 'auto', top: 'auto', 'max-width': 'none', padding: '0', order: '2' });
+                        Array.prototype.forEach.call(rows, function(row, i){ setMany(row, { width: '100%', display: 'flex', 'justify-content': 'center', gap: px(11), padding: px(5), overflow: 'visible', 'margin-top': i === 0 ? '0' : px(13) }); });
+                        Array.prototype.forEach.call(posters, function(p){ setMany(p, { width: px(105), height: px(172), flex: 'none' }); });
+                        setMany(account, { display: 'block', width: '100%', 'margin-top': px(2), 'margin-bottom': px(5), padding: px(7) + ' ' + px(10), transform: 'none', order: '3', 'box-sizing': 'border-box' });
+                        setMany(panel, { width: '100%', height: 'auto', 'margin-top': 'auto', padding: px(8), display: 'grid', 'grid-template-columns': '1fr 1fr', gap: px(8), left: 'auto', top: 'auto', transform: 'translateY(' + px(-10) + ')', order: '4' });
+                        document.querySelectorAll('.btn, .btn.act').forEach(function(btn){ setMany(btn, { width: '100%', height: px(52), 'justify-content': 'center', padding: '0', gap: px(8), 'font-size': px(14), flex: 'none' }); });
+                        document.querySelectorAll('.btn svg').forEach(function(svg){ setMany(svg, { width: px(26), height: px(27) }); });
+                    }
 
                     console.log('DIAG_ORIENTATION_COMPAT: w=' + innerW + ' h=' + innerH +
-                        ' portrait=' + actualPortrait +
-                        ' mqPortrait=' + mqPortrait + ' u=' + u);
+                        ' portrait=' + actualPortrait + ' mqPortrait=' + window.matchMedia('(orientation: portrait)').matches + ' u=' + u);
                 })();
                 root.style.setProperty('width', '100%', 'important');
                 root.style.setProperty('height', h + 'px', 'important');
