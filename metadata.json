@@ -1,0 +1,6 @@
+{
+  "name": "IPTV Player",
+  "description": "Professional IPTV player with dual-stream External Audio synchronization, Xtream & M3U support, Live TV, Movies, Series, and Android TV navigation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
