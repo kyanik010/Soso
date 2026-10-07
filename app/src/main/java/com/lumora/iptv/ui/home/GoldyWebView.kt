@@ -243,18 +243,14 @@ fun injectU(webView: WebView) {
                     void document.body.offsetHeight;
                 }
 
-                // Fix 100dvh fallback in portrait mode
+                // Fix: bypass calc(739 * var(--u)) by setting explicit width/height.
+                // 100dvh may be unsupported in older WebView, making --u invalid at computed-value time.
                 var stage = document.querySelector('.stage');
                 if (stage) {
-                    if (h > w) {
-                        // Portrait only
-                        stage.style.height = h + 'px';
-                        stage.style.width = '100%';
-                    } else {
-                        // Landscape: clear overrides, let CSS handle it
-                        stage.style.height = '';
-                        stage.style.width = '';
-                    }
+                    var stageW = 739 * u;
+                    var stageH = 415 * u;
+                    stage.style.setProperty('width', stageW + 'px', 'important');
+                    stage.style.setProperty('height', stageH + 'px', 'important');
                     void stage.offsetHeight;
                 }
 
