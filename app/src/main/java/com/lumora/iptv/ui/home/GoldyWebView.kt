@@ -236,7 +236,22 @@ fun injectU(webView: WebView) {
                     u = Math.min(w / 739, h / 415);
                 }
                 document.documentElement.style.setProperty('--u', u + 'px');
-                console.log('INJECT_U_DEBUG: w=' + w + ' h=' + h + ' u=' + u);
+
+                // Force reflow to make CSS recalculate dependent properties
+                void document.documentElement.offsetHeight;
+                if (document.body) {
+                    void document.body.offsetHeight;
+                }
+
+                // Fix 100dvh fallback in portrait mode
+                var stage = document.querySelector('.stage');
+                if (stage) {
+                    stage.style.height = h + 'px';
+                    stage.style.width = '100%';
+                    void stage.offsetHeight;
+                }
+
+                console.log('INJECT_U_DEBUG: w=' + w + ' h=' + h + ' u=' + u + ' (reflow+dvh fix)');
                 return u;
             }
             calcU();
