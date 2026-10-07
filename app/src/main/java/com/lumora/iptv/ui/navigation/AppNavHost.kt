@@ -63,8 +63,17 @@ fun AppNavHost(
                         val streamId = id.toIntOrNull() ?: 0
                         val movie = repository.getMovieById(streamId)
                         if (movie != null && movie.streamUrl.isNotBlank()) {
+                            val sourceId = Screen.Player.SOURCE_VOD + "_" + movie.id
+                            repository.savePlaybackSource(
+                                sourceId,
+                                com.lumora.iptv.player.PlaybackSource.Vod(
+                                    streamId = movie.id.toInt(),
+                                    container = movie.containerExtension
+                                ),
+                                movie.streamUrl
+                            )
                             navController.navigate(
-                                Screen.Player.createRoute(movie.title, movie.streamUrl, "movie")
+                                Screen.Player.createRoute(sourceId, "movie", movie.title)
                             )
                         } else {
                             navController.navigate(Screen.Movies.route)
@@ -86,9 +95,20 @@ fun AppNavHost(
                 repository = repository,
                 onBack = { navController.popBackStack() },
                 onPlayMovie = { movie ->
-                    navController.navigate(
-                        Screen.Player.createRoute(movie.title, movie.streamUrl, "movie")
-                    )
+                    scope.launch {
+                        val sourceId = Screen.Player.SOURCE_VOD + "_" + movie.id
+                        repository.savePlaybackSource(
+                            sourceId,
+                            com.lumora.iptv.player.PlaybackSource.Vod(
+                                streamId = movie.id.toInt(),
+                                container = movie.containerExtension
+                            ),
+                            movie.streamUrl
+                        )
+                        navController.navigate(
+                            Screen.Player.createRoute(sourceId, "movie", movie.title)
+                        )
+                    }
                 }
             )
         }
@@ -99,9 +119,20 @@ fun AppNavHost(
                 repository = repository,
                 onBack = { navController.popBackStack() },
                 onPlayChannel = { channel ->
-                    navController.navigate(
-                        Screen.Player.createRoute(channel.name, channel.streamUrl, "channel")
-                    )
+                    scope.launch {
+                        val sourceId = Screen.Player.SOURCE_LIVE + "_" + channel.id
+                        repository.savePlaybackSource(
+                            sourceId,
+                            com.lumora.iptv.player.PlaybackSource.Live(
+                                streamId = channel.id.toInt(),
+                                container = "ts"
+                            ),
+                            channel.streamUrl
+                        )
+                        navController.navigate(
+                            Screen.Player.createRoute(sourceId, "channel", channel.name)
+                        )
+                    }
                 }
             )
         }
@@ -129,9 +160,24 @@ fun AppNavHost(
                 repository = repository,
                 onBack = { navController.popBackStack() },
                 onPlayEpisode = { ep ->
-                    navController.navigate(
-                        Screen.Player.createRoute(ep.title ?: "Episode ${ep.number}", ep.streamUrl, "episode")
-                    )
+                    scope.launch {
+                        val sourceId = Screen.Player.SOURCE_EPISODE + "_" + ep.id
+                        repository.savePlaybackSource(
+                            sourceId,
+                            com.lumora.iptv.player.PlaybackSource.Episode(
+                                episodeId = ep.id,
+                                container = ep.containerExtension
+                            ),
+                            ep.streamUrl
+                        )
+                        navController.navigate(
+                            Screen.Player.createRoute(
+                                sourceId,
+                                "episode",
+                                ep.title ?: "Episode " + ep.number
+                            )
+                        )
+                    }
                 }
             )
         }
