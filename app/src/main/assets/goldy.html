@@ -1709,6 +1709,27 @@ window.IPTV = {
 
     render();
 
+  },
+
+  setAccount(account){
+
+    const values =
+      document.querySelectorAll(".account-value");
+
+    const username =
+      account && account.username
+        ? String(account.username)
+        : "غير مسجل";
+
+    const expiry =
+      account && account.expiryDate
+        ? String(account.expiryDate)
+        : "غير محدد";
+
+    values.forEach((el,index) => {
+      setText(el,index % 2 === 0 ? username : expiry);
+    });
+
   }
 
 };
