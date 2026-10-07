@@ -28,14 +28,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download Gradle 8.11.1
+      - name: Download Gradle 9.3.1
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
-          unzip -q gradle-8.11.1-bin.zip
-          echo "$PWD/gradle-8.11.1/bin" >> $GITHUB_PATH
+          wget -q https://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+          unzip -q gradle-9.3.1-bin.zip
+          echo "$PWD/gradle-9.3.1/bin" >> $GITHUB_PATH
 
       - name: Generate Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.11.1
+        run: gradle wrapper --gradle-version 9.3.1
 
       - name: Verify files exist
         run: |
@@ -53,6 +53,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: generate Gradle wrapper 8.11.1"
+            git commit -m "chore: generate Gradle wrapper 9.3.1"
             git push
           fi
