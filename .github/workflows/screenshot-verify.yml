@@ -1,4 +1,4 @@
-name: Screenshot Verification v10
+name: Screenshot Verification v11
 
 on:
   workflow_dispatch:
