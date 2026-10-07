@@ -40,8 +40,13 @@ fun AppNavHost(
             SplashScreen(
                 repository = repository,
                 onProceed = {
-                    navController.navigate(Screen.GoldyHome.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    scope.launch {
+                        val account = repository.getAccount()
+                        val credentials = repository.getCredentials()
+                        val destination = if (account != null && credentials != null) Screen.GoldyHome.route else Screen.Settings.route
+                        navController.navigate(destination) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -206,7 +211,12 @@ fun AppNavHost(
             SettingsScreen(
                 repository = repository,
                 onBack = { navController.popBackStack() },
-                onNavigateToAccount = { navController.navigate(Screen.Account.route) }
+                onNavigateToAccount = { navController.navigate(Screen.Account.route) },
+                onSyncComplete = {
+                    navController.navigate(Screen.GoldyHome.route) {
+                        popUpTo(Screen.Settings.route) { inclusive = true }
+                    }
+                }
             )
         }
 
