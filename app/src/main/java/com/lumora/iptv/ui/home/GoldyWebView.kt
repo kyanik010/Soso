@@ -252,6 +252,77 @@ fun injectU(webView: WebView) {
                     stage.style.setProperty('width', stageW + 'px', 'important');
                     stage.style.setProperty('height', stageH + 'px', 'important');
                     void stage.offsetHeight;
+
+                    // DIAGNOSTIC: log actual rendered sizes
+                    var stageCS = window.getComputedStyle(stage);
+                    console.log('DIAG_STAGE: offsetW=' + stage.offsetWidth +
+                        ' offsetH=' + stage.offsetHeight +
+                        ' clientW=' + stage.clientWidth +
+                        ' clientH=' + stage.clientHeight +
+                        ' computedW=' + stageCS.width +
+                        ' computedH=' + stageCS.height +
+                        ' display=' + stageCS.display +
+                        ' visibility=' + stageCS.visibility +
+                        ' opacity=' + stageCS.opacity +
+                        ' zIndex=' + stageCS.zIndex +
+                        ' position=' + stageCS.position +
+                        ' overflow=' + stageCS.overflow);
+
+                    var panel = document.querySelector('.panel');
+                    if (panel) {
+                        var panelCS = window.getComputedStyle(panel);
+                        console.log('DIAG_PANEL: offsetW=' + panel.offsetWidth +
+                            ' offsetH=' + panel.offsetHeight +
+                            ' display=' + panelCS.display +
+                            ' visibility=' + panelCS.visibility +
+                            ' opacity=' + panelCS.opacity +
+                            ' zIndex=' + panelCS.zIndex +
+                            ' position=' + panelCS.position);
+                    }
+
+                    var account = document.querySelector('.account-info-portrait');
+                    if (account) {
+                        var accountCS = window.getComputedStyle(account);
+                        console.log('DIAG_ACCOUNT: offsetW=' + account.offsetWidth +
+                            ' offsetH=' + account.offsetHeight +
+                            ' display=' + accountCS.display +
+                            ' visibility=' + accountCS.visibility +
+                            ' opacity=' + accountCS.opacity +
+                            ' transform=' + accountCS.transform);
+                    }
+
+                    var logo = document.querySelector('.landscape-logo');
+                    if (logo) {
+                        var logoCS = window.getComputedStyle(logo);
+                        console.log('DIAG_LOGO: offsetW=' + logo.offsetWidth +
+                            ' offsetH=' + logo.offsetHeight +
+                            ' display=' + logoCS.display +
+                            ' visibility=' + logoCS.visibility +
+                            ' opacity=' + logoCS.opacity +
+                            ' position=' + logoCS.position +
+                            ' top=' + logoCS.top +
+                            ' left=' + logoCS.left);
+                    }
+
+                    // Count body children and their z-index
+                    var bodyChildren = document.body.children;
+                    console.log('DIAG_BODY: count=' + bodyChildren.length);
+                    for (var i = 0; i < bodyChildren.length; i++) {
+                        var c = bodyChildren[i];
+                        var cCS = window.getComputedStyle(c);
+                        console.log('DIAG_BODY_' + i + ': tag=' + c.tagName +
+                            ' class=' + c.className +
+                            ' zIndex=' + cCS.zIndex +
+                            ' position=' + cCS.position +
+                            ' display=' + cCS.display);
+                    }
+
+                    // Also log the value of --u currently in :root
+                    console.log('DIAG_ROOT_U: ' + getComputedStyle(document.documentElement).getPropertyValue('--u'));
+
+                    // Log matchMedia result
+                    console.log('DIAG_MEDIA: portrait=' + window.matchMedia('(orientation: portrait)').matches +
+                        ' landscape=' + window.matchMedia('(orientation: landscape)').matches);
                 }
 
                 console.log('INJECT_U_DEBUG: w=' + w + ' h=' + h + ' u=' + u + ' (reflow+dvh fix)');
