@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/generate-wrapper.yml'
+      - 'app/build.gradle.kts'
 
 jobs:
   generate:
