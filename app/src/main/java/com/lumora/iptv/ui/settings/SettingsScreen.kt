@@ -60,7 +60,8 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     repository: IptvRepository,
     onBack: () -> Unit,
-    onNavigateToAccount: () -> Unit
+    onNavigateToAccount: () -> Unit,
+    onSyncComplete: () -> Unit
 ) {
     BackHandler { onBack() }
 
@@ -236,13 +237,13 @@ fun SettingsScreen(
                                 Toast.makeText(context, "يرجى ملء جميع حقول Xtream", Toast.LENGTH_SHORT).show()
                                 return@launch
                             }
-                            repository.syncXtream(serverUrl, username, password)
+                            repository.syncXtream(serverUrl, username, password).onSuccess { onSyncComplete() }
                         } else {
                             if (m3uUrl.isBlank()) {
                                 Toast.makeText(context, "يرجى إدخال رابط M3U", Toast.LENGTH_SHORT).show()
                                 return@launch
                             }
-                            repository.syncM3u(m3uUrl)
+                            repository.syncM3u(m3uUrl).onSuccess { onSyncComplete() }
                         }
                     }
                 },
