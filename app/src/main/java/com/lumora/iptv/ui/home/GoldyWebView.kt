@@ -56,40 +56,6 @@ fun GoldyHomeScreen(
     // Hold reference to WebView for evaluation
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
-    fun initializeGoldyPage(view: WebView) {
-        val finishInitialization: () -> Unit = {
-            injectU(view)
-            sendMoviesToWebView(view, movies)
-            view.post {
-                view.requestLayout()
-                view.invalidate()
-                view.requestFocus()
-                AppLogger.d(
-                    "GoldyWebView",
-                    "Native bounds: x=" + view.x +
-                        " y=" + view.y +
-                        " w=" + view.width +
-                        " h=" + view.height +
-                        " root=" + view.rootView.width + "x" + view.rootView.height
-                )
-            }
-        }
-
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.VISUAL_STATE_CALLBACK)) {
-            WebViewCompat.postVisualStateCallback(
-                view,
-                System.nanoTime(),
-                object : WebViewCompat.VisualStateCallback {
-                    override fun onComplete(requestId: Long) {
-                        finishInitialization()
-                    }
-                }
-            )
-        } else {
-            view.postDelayed(finishInitialization, 80L)
-        }
-    }
-
     val bridge = remember {
         GoldyBridge(
             onOpenAction = onOpenMovie,
@@ -182,12 +148,12 @@ fun GoldyHomeScreen(
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            view?.let { initializeGoldyPage(it) }
                         }
 
                         override fun onPageCommitVisible(view: WebView, url: String) {
                             super.onPageCommitVisible(view, url)
-                            initializeGoldyPage(view)
+                            injectU(view)
+                            sendMoviesToWebView(view, movies)
                         }
 
                         override fun onReceivedError(
@@ -230,7 +196,11 @@ fun GoldyHomeScreen(
                     }
 
                     addJavascriptInterface(bridge, "Android")
-                    loadUrl("https://appassets.androidplatform.net/goldy.html")
+                    doOnLayout {
+                        if (url.isEmpty()) {
+                            loadUrl("https://appassets.androidplatform.net/goldy.html")
+                        }
+                    }
                     requestFocus()
                 }
             },
@@ -283,6 +253,31 @@ fun injectU(webView: WebView) {
                 // Keep --u computed in JavaScript for legacy WebView compatibility.
                 // Orientation/layout itself is controlled by goldy.html classes.
                 root.style.setProperty('--u', u + 'px', 'important');
+                root.style.setProperty('--vh', h + 'px', 'important');
+
+                var visualViewportWidth =
+                    window.visualViewport ? window.visualViewport.width : 0;
+                var visualViewportHeight =
+                    window.visualViewport ? window.visualViewport.height : 0;
+
+                console.log(
+                    'DIAG_WEBVIEW_VERSION: ' +
+                    (navigator.userAgent || 'unknown')
+                );
+
+                console.log(
+                    'DIAG_SCREEN_ORIENTATION: ' +
+                    (window.screen && window.screen.orientation
+                        ? window.screen.orientation.type
+                        : 'unknown')
+                );
+
+                console.log(
+                    'DIAG_VISUAL_VIEWPORT: w=' +
+                    visualViewportWidth +
+                    ' h=' +
+                    visualViewportHeight
+                );
 
                 if (typeof window.applyOrientation === 'function') {
                     window.applyOrientation();
