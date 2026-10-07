@@ -16,7 +16,7 @@ import com.lumora.iptv.data.model.Movie
 import com.lumora.iptv.data.model.Series
 import com.lumora.iptv.data.secure.KeystoreCredentialsStore
 import com.lumora.iptv.data.secure.SecureCredentialsStore
-import com.lumora.iptv.player.PlaybackUrlBuilder
+import com.lumora.iptv.player.PlaybackSource
 import com.lumora.iptv.util.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +42,9 @@ class IptvRepository(
 ) {
     private val dao = db.iptvDao()
 
+    // AppNavHost and PlayerScreen receive the same repository instance from MainActivity.
+    private val playbackSources = mutableMapOf<String, PlaybackSource>()
+
     private val _syncState = MutableStateFlow(SyncState())
     val syncState = _syncState.asStateFlow()
 
@@ -53,6 +56,70 @@ class IptvRepository(
     }
 
     suspend fun getCredentials(): Credentials? = secureStore.loadCredentials()
+
+    suspend fun savePlaybackSource(
+        sourceId: String,
+        source: PlaybackSource,
+        m3uUrl: String
+    ) {
+        val credentials = getCredentials()
+        playbackSources[sourceId] = if (
+            credentials?.sourceType == "m3u" && m3uUrl.isNotBlank()
+        ) {
+            PlaybackSource.M3uUrl(m3uUrl)
+        } else {
+            source
+        }
+    }
+
+    suspend fun getPlaybackSource(sourceId: String): PlaybackSource? {
+        playbackSources[sourceId]?.let { return it }
+
+        val separator = sourceId.indexOf('_')
+        if (separator <= 0 || separator == sourceId.lastIndex) return null
+
+        val mediaType = sourceId.substring(0, separator)
+        val id = sourceId.substring(separator + 1)
+        val credentials = getCredentials()
+
+        val restored = withContext(Dispatchers.IO) {
+            when (mediaType) {
+                "live" -> id.toIntOrNull()?.let { streamId ->
+                    dao.getChannelById(streamId)?.let {
+                        if (credentials?.sourceType == "m3u") {
+                            PlaybackSource.M3uUrl(it.streamUrl)
+                        } else {
+                            PlaybackSource.Live(streamId = it.streamId, container = "ts")
+                        }
+                    }
+                }
+                "vod" -> id.toIntOrNull()?.let { streamId ->
+                    dao.getMovieById(streamId)?.let {
+                        if (credentials?.sourceType == "m3u") {
+                            PlaybackSource.M3uUrl(it.streamUrl)
+                        } else {
+                            PlaybackSource.Vod(
+                                streamId = it.streamId,
+                                container = it.containerExtension
+                            )
+                        }
+                    }
+                }
+                "episode" -> dao.getEpisodeById(id)?.let {
+                    PlaybackSource.Episode(
+                        episodeId = it.episodeId,
+                        container = it.containerExtension
+                    )
+                }
+                else -> null
+            }
+        }
+
+        if (restored != null) {
+            playbackSources[sourceId] = restored
+        }
+        return restored
+    }
 
     fun getLiveCategories(): Flow<List<Category>> =
         dao.getCategoriesByType("live").map { list -> list.map { Category(it.categoryId, it.categoryName, "live") } }
