@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebResourceErrorCompat
 import com.lumora.iptv.bridge.GoldyBridge
 import com.lumora.iptv.data.iptv.IptvRepository
 import com.lumora.iptv.data.model.Movie
@@ -111,11 +112,37 @@ fun GoldyHomeScreen(
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             view?.let {
+                                injectU(it)
                                 sendMoviesToWebView(it, movies)
                                 it.requestFocus()
                             }
                         }
                     }
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceErrorCompat?
+                        ) {
+                            super.onReceivedError(view, request, error)
+                            AppLogger.e(
+                                "GoldyWebView",
+                                "onReceivedError: ${request?.url} - " +
+                                    "code=${error?.errorCode} desc=${error?.description}"
+                            )
+                        }
+
+                        override fun onReceivedHttpError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            errorResponse: WebResourceResponse?
+                        ) {
+                            super.onReceivedHttpError(view, request, errorResponse)
+                            AppLogger.e(
+                                "GoldyWebView",
+                                "onReceivedHttpError: ${request?.url} - " +
+                                    "status=${errorResponse?.statusCode}"
+                            )
+                        }
 
                     addJavascriptInterface(bridge, "Android")
                     loadUrl("https://appassets.androidplatform.net/goldy.html")
@@ -137,6 +164,44 @@ fun GoldyHomeScreen(
             webViewRef = null
         }
     }
+}
+
+/**
+ * Injects a computed --u value into the WebView.
+ *
+ * goldy.html defines:
+ *   --u: min(calc(100vw / 739), calc(100dvh / 415));
+ *
+ * But 100dvh is not supported in all Android WebView versions,
+ * which makes --u invalid and collapses .stage to 0x0.
+ *
+ * This function computes --u in pixels using JavaScript and sets
+ * it as an inline style on :root, without modifying goldy.html.
+ *
+ * It also listens for resize/orientationchange and recomputes.
+ */
+fun injectU(webView: WebView) {
+    val js = """
+        (function() {
+            function calcU() {
+                var w = window.innerWidth;
+                var h = window.innerHeight;
+                var u;
+                if (h > w) {
+                    // Portrait
+                    u = w / 400;
+                } else {
+                    // Landscape
+                    u = Math.min(w / 739, h / 415);
+                }
+                document.documentElement.style.setProperty('--u', u + 'px');
+            }
+            calcU();
+            window.addEventListener('resize', calcU);
+            window.addEventListener('orientationchange', calcU);
+        })();
+    """.trimIndent()
+    webView.evaluateJavascript(js, null)
 }
 
 /**
