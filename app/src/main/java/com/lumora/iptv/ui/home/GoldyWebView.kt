@@ -293,17 +293,13 @@ fun injectU(webView: WebView) {
                 root.style.setProperty('--u', u + 'px', 'important');
                 
                 // ============================================
+                // ================================================
                 // PHASE 3: CSS Orientation Compatibility Layer
-                // ============================================
-                // Android WebView reports wrong @media (orientation:*) even with
-                // useWideViewPort + loadWithOverviewMode. We toggle a class on <html>
-                // based on the ACTUAL viewport dimensions (innerWidth/innerHeight),
-                // and inject mirror rules that reproduce the SAME display: declarations
-                // that goldy.html already applies via @media (orientation: portrait).
-                //
-                // IMPORTANT: This layer does NOT introduce any new design.
-                // It ONLY mirrors the existing rules from goldy.html when
-                // WebView's @media reports the wrong orientation.
+                // ================================================
+                // Mirrors goldy.html @media (orientation: portrait) rules.
+                // All values are explicit pixels (no calc(var(--u))).
+                // Uses `order` for correct visual stacking.
+
                 (function() {
                     var innerW = window.innerWidth;
                     var innerH = window.innerHeight;
@@ -311,37 +307,80 @@ fun injectU(webView: WebView) {
                     var mqPortrait = window.matchMedia('(orientation: portrait)').matches;
 
                     var html = document.documentElement;
-
-                    // Toggle helper classes based on ACTUAL viewport
                     html.classList.toggle('goldy-force-portrait', actualPortrait);
                     html.classList.toggle('goldy-force-landscape', !actualPortrait);
 
-                    // Inject compatibility CSS once
+                    var u = actualPortrait
+                        ? (innerW / 400)
+                        : Math.min(innerW / 739, innerH / 415);
+
+                    function px(n) { return (n * u) + 'px'; }
+
                     if (!document.getElementById('goldy-orientation-compat')) {
                         var style = document.createElement('style');
                         style.id = 'goldy-orientation-compat';
                         style.textContent = [
-                            // ------------------------------------------------
-                            // When actual viewport is PORTRAIT but WebView says landscape
-                            // ------------------------------------------------
+                            'html.goldy-force-portrait .stage {',
+                            '  width: 100% !important;',
+                            '  height: 100dvh !important;',
+                            '  max-height: 100dvh !important;',
+                            '  top: 0 !important;',
+                            '  left: 0 !important;',
+                            '  transform: none !important;',
+                            '  margin: 0 !important;',
+                            '  display: flex !important;',
+                            '  flex-direction: column !important;',
+                            '  align-items: center !important;',
+                            '  justify-content: flex-start !important;',
+                            '  padding: ' + px(12) + ' ' + px(14) + ' ' + px(10) + ' !important;',
+                            '  overflow: hidden !important;',
+                            '  box-sizing: border-box !important;',
+                            '}',
+                            'html.goldy-force-portrait .stage > * {',
+                            '  position: relative !important;',
+                            '  left: auto !important;',
+                            '  top: auto !important;',
+                            '  transform: none !important;',
+                            '}',
 
-                            // Hide landscape-only elements
-                            'html.goldy-force-portrait .landscape-logo { display: none !important; }',
-                            'html.goldy-force-portrait .account-info-landscape { display: none !important; }',
+                            'html.goldy-force-portrait .landscape-logo {',
+                            '  display: flex !important;',
+                            '  position: absolute !important;',
+                            '  left: 50% !important;',
+                            '  top: ' + px(10) + ' !important;',
+                            '  transform: translateX(-50%) !important;',
+                            '  width: ' + px(200) + ' !important;',
+                            '  height: ' + px(135) + ' !important;',
+                            '  align-items: center !important;',
+                            '  justify-content: center !important;',
+                            '  z-index: 100 !important;',
+                            '  pointer-events: none !important;',
+                            '  order: 1 !important;',
+                            '}',
+                            'html.goldy-force-portrait .landscape-logo img {',
+                            '  display: block !important;',
+                            '  width: auto !important;',
+                            '  height: auto !important;',
+                            '  max-width: 100% !important;',
+                            '  max-height: 100% !important;',
+                            '  object-fit: contain !important;',
+                            '}',
+
+                            'html.goldy-force-portrait .account-info-landscape {',
+                            '  display: none !important;',
+                            '}',
                             'html.goldy-force-portrait h1,',
                             'html.goldy-force-portrait .cat,',
                             'html.goldy-force-portrait .tl,',
                             'html.goldy-force-portrait .br,',
                             'html.goldy-force-portrait .feat,',
-                            'html.goldy-force-portrait .info { display: none !important; }',
+                            'html.goldy-force-portrait .info {',
+                            '  display: none !important;',
+                            '}',
 
-                            // Show portrait-only elements
-                            'html.goldy-force-portrait .account-info-portrait { display: block !important; }',
-
-                            // Restore portrait layout for .rail (mirror of goldy.html @media portrait)
                             'html.goldy-force-portrait .rail {',
                             '  width: 100% !important;',
-                            '  margin-top: calc(20 * var(--u)) !important;',
+                            '  margin-top: ' + px(20) + ' !important;',
                             '  display: flex !important;',
                             '  flex-direction: column !important;',
                             '  align-items: center !important;',
@@ -349,88 +388,145 @@ fun injectU(webView: WebView) {
                             '  top: auto !important;',
                             '  max-width: none !important;',
                             '  padding: 0 !important;',
+                            '  order: 2 !important;',
                             '}',
 
-                            // Restore portrait row
                             'html.goldy-force-portrait .row {',
                             '  width: 100% !important;',
                             '  display: flex !important;',
                             '  justify-content: center !important;',
-                            '  gap: calc(11 * var(--u)) !important;',
-                            '  padding: calc(5 * var(--u)) !important;',
+                            '  gap: ' + px(11) + ' !important;',
+                            '  padding: ' + px(5) + ' !important;',
                             '  overflow: visible !important;',
                             '  margin-top: 0 !important;',
                             '}',
                             'html.goldy-force-portrait .row + .row {',
-                            '  margin-top: calc(13 * var(--u)) !important;',
+                            '  display: flex !important;',
+                            '  margin-top: ' + px(13) + ' !important;',
                             '}',
 
-                            // Restore portrait poster size
                             'html.goldy-force-portrait .poster {',
-                            '  width: calc(105 * var(--u)) !important;',
-                            '  height: calc(172 * var(--u)) !important;',
+                            '  width: ' + px(105) + ' !important;',
+                            '  height: ' + px(172) + ' !important;',
+                            '  flex: none !important;',
+                            '}',
+                            'html.goldy-force-portrait .poster img {',
+                            '  width: 100% !important;',
+                            '  height: 100% !important;',
+                            '  object-fit: cover !important;',
                             '}',
 
-                            // Restore portrait panel
+                            'html.goldy-force-portrait .account-info-portrait {',
+                            '  display: block !important;',
+                            '  width: 100% !important;',
+                            '  margin-top: ' + px(2) + ' !important;',
+                            '  margin-bottom: ' + px(5) + ' !important;',
+                            '  padding: ' + px(7) + ' ' + px(10) + ' !important;',
+                            '  transform: none !important;',
+                            '  order: 3 !important;',
+                            '  border: 1px solid rgba(125, 211, 252, 0.16) !important;',
+                            '  border-radius: ' + px(8) + ' !important;',
+                            '  background: rgba(2, 15, 31, 0.58) !important;',
+                            '  box-shadow: 0 ' + px(4) + ' ' + px(16) + ' rgba(0, 0, 0, 0.18) !important;',
+                            '  backdrop-filter: blur(8px) !important;',
+                            '  -webkit-backdrop-filter: blur(8px) !important;',
+                            '  box-sizing: border-box !important;',
+                            '  z-index: 5 !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-title {',
+                            '  display: flex !important;',
+                            '  align-items: center !important;',
+                            '  gap: ' + px(6) + ' !important;',
+                            '  margin-bottom: ' + px(5) + ' !important;',
+                            '  color: #e0f2fe !important;',
+                            '  font: 600 ' + px(10.5) + ' / 1.2 Roboto, Arial, sans-serif !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-user-icon {',
+                            '  display: flex !important;',
+                            '  align-items: center !important;',
+                            '  justify-content: center !important;',
+                            '  width: ' + px(19) + ' !important;',
+                            '  height: ' + px(19) + ' !important;',
+                            '  max-width: ' + px(19) + ' !important;',
+                            '  max-height: ' + px(19) + ' !important;',
+                            '  flex: none !important;',
+                            '  border-radius: 50% !important;',
+                            '  color: #7dd3fc !important;',
+                            '  background: rgba(0, 212, 255, 0.07) !important;',
+                            '  border: 1px solid rgba(0, 212, 255, 0.14) !important;',
+                            '  overflow: hidden !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-user-icon svg {',
+                            '  width: ' + px(12) + ' !important;',
+                            '  height: ' + px(12) + ' !important;',
+                            '  max-width: ' + px(12) + ' !important;',
+                            '  max-height: ' + px(12) + ' !important;',
+                            '  fill: none !important;',
+                            '  stroke: currentColor !important;',
+                            '  stroke-width: 1.6 !important;',
+                            '  stroke-linecap: round !important;',
+                            '  stroke-linejoin: round !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-line {',
+                            '  display: flex !important;',
+                            '  align-items: center !important;',
+                            '  justify-content: space-between !important;',
+                            '  gap: ' + px(8) + ' !important;',
+                            '  min-height: ' + px(14) + ' !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-label {',
+                            '  color: rgba(224, 242, 254, 0.48) !important;',
+                            '  font: 400 ' + px(7.5) + ' / 1.2 Roboto, Arial, sans-serif !important;',
+                            '  white-space: nowrap !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-value {',
+                            '  color: #e0f2fe !important;',
+                            '  font: 500 ' + px(8) + ' / 1.2 Roboto, Arial, sans-serif !important;',
+                            '  white-space: nowrap !important;',
+                            '  text-align: right !important;',
+                            '}',
+                            'html.goldy-force-portrait .account-info-portrait .account-expiry {',
+                            '  color: #7dd3fc !important;',
+                            '}',
+
                             'html.goldy-force-portrait .panel {',
                             '  width: 100% !important;',
                             '  height: auto !important;',
                             '  margin-top: auto !important;',
-                            '  padding: calc(8 * var(--u)) !important;',
+                            '  padding: ' + px(8) + ' !important;',
                             '  display: grid !important;',
                             '  grid-template-columns: 1fr 1fr !important;',
-                            '  gap: calc(8 * var(--u)) !important;',
+                            '  gap: ' + px(8) + ' !important;',
                             '  left: auto !important;',
                             '  top: auto !important;',
-                            '  transform: translateY(calc(-10 * var(--u))) !important;',
+                            '  transform: translateY(' + px(-10) + ') !important;',
+                            '  order: 4 !important;',
                             '}',
-
-                            // Restore portrait button size
                             'html.goldy-force-portrait .btn,',
                             'html.goldy-force-portrait .btn.act {',
                             '  width: 100% !important;',
-                            '  height: calc(52 * var(--u)) !important;',
+                            '  height: ' + px(52) + ' !important;',
                             '  justify-content: center !important;',
                             '  padding: 0 !important;',
-                            '  gap: calc(8 * var(--u)) !important;',
-                            '  font-size: calc(14 * var(--u)) !important;',
+                            '  gap: ' + px(8) + ' !important;',
+                            '  font-size: ' + px(14) + ' !important;',
                             '  flex: none !important;',
                             '}',
                             'html.goldy-force-portrait .btn svg {',
-                            '  width: calc(26 * var(--u)) !important;',
-                            '  height: calc(27 * var(--u)) !important;',
+                            '  width: ' + px(26) + ' !important;',
+                            '  height: ' + px(27) + ' !important;',
                             '}',
 
-                            // Restore stage flex layout for portrait
-                            'html.goldy-force-portrait .stage {',
-                            '  width: 100% !important;',
-                            '  height: 100dvh !important;',
-                            '  top: 0 !important;',
-                            '  transform: none !important;',
-                            '  display: flex !important;',
-                            '  flex-direction: column !important;',
-                            '  align-items: center !important;',
-                            '  justify-content: flex-start !important;',
-                            '  padding: calc(12 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u)) !important;',
-                            '}',
-                            'html.goldy-force-portrait .stage > * {',
-                            '  position: relative !important;',
-                            '  left: auto !important;',
-                            '  top: auto !important;',
-                            '}',
-
-                            // ------------------------------------------------
-                            // When actual viewport is LANDSCAPE but WebView says portrait
-                            // ------------------------------------------------
-                            'html.goldy-force-landscape .account-info-portrait { display: none !important; }'
+                            'html.goldy-force-landscape .account-info-portrait {',
+                            '  display: none !important;',
+                            '}'
                         ].join('\n');
                         document.head.appendChild(style);
                     }
 
-                    console.log('DIAG_ORIENTATION_COMPAT: innerW=' + innerW + ' innerH=' + innerH +
-                        ' actualPortrait=' + actualPortrait +
-                        ' mqPortrait=' + mqPortrait +
-                        ' forceClassApplied=' + actualPortrait);
+                    console.log('DIAG_ORIENTATION_COMPAT: w=' + innerW + ' h=' + innerH +
+                        ' portrait=' + actualPortrait +
+                        ' mqPortrait=' + mqPortrait + ' u=' + u);
                 })();
                 root.style.setProperty('width', '100%', 'important');
                 root.style.setProperty('height', h + 'px', 'important');
