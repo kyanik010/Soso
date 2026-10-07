@@ -13,7 +13,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.iptvplayer.spkrtv"
+    applicationId = "com.lumora.iptv"
     minSdk = 26
     targetSdk = 36
     versionCode = 1
