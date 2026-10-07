@@ -21,12 +21,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import androidx.webkit.WebResourceErrorCompat
 import com.lumora.iptv.bridge.GoldyBridge
 import com.lumora.iptv.data.iptv.IptvRepository
@@ -50,7 +54,41 @@ fun GoldyHomeScreen(
     val movies by repository.getAllMovies().collectAsState(initial = emptyList())
 
     // Hold reference to WebView for evaluation
-    var webViewRef: WebView? = remember { null }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    fun initializeGoldyPage(view: WebView) {
+        val finishInitialization = {
+            injectU(view)
+            sendMoviesToWebView(view, movies)
+            view.post {
+                view.requestLayout()
+                view.invalidate()
+                view.requestFocus()
+                AppLogger.d(
+                    "GoldyWebView",
+                    "Native bounds: x=" + view.x +
+                        " y=" + view.y +
+                        " w=" + view.width +
+                        " h=" + view.height +
+                        " root=" + view.rootView.width + "x" + view.rootView.height
+                )
+            }
+        }
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.VISUAL_STATE_CALLBACK)) {
+            WebViewCompat.postVisualStateCallback(
+                view,
+                System.nanoTime(),
+                object : WebViewCompat.VisualStateCallback() {
+                    override fun onComplete(requestId: Long) {
+                        finishInitialization()
+                    }
+                }
+            )
+        } else {
+            view.postDelayed(finishInitialization, 80L)
+        }
+    }
 
     val bridge = remember {
         GoldyBridge(
@@ -139,11 +177,12 @@ fun GoldyHomeScreen(
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
-                            view?.let {
-                                injectU(it)
-                                sendMoviesToWebView(it, movies)
-                                it.requestFocus()
-                            }
+                            view?.let { initializeGoldyPage(it) }
+                        }
+
+                        override fun onPageCommitVisible(view: WebView?, url: String?) {
+                            super.onPageCommitVisible(view, url)
+                            view?.let { initializeGoldyPage(it) }
                         }
 
                         override fun onReceivedError(
@@ -225,147 +264,193 @@ fun injectU(webView: WebView) {
     val js = """
         (function() {
             function calcU() {
-                var w = window.innerWidth;
-                var h = window.innerHeight;
-                var u;
-                if (h > w) {
-                    // Portrait
-                    u = w / 400;
-                } else {
-                    // Landscape
-                    u = Math.min(w / 739, h / 415);
-                }
-                document.documentElement.style.setProperty('--u', u + 'px');
+                var root = document.documentElement;
+                var body = document.body;
 
-                // Force reflow to make CSS recalculate dependent properties
-                void document.documentElement.offsetHeight;
-                if (document.body) {
-                    void document.body.offsetHeight;
+                if (!root || !body) {
+                    console.log('DIAG_DOM_NOT_READY');
+                    return false;
                 }
 
-                var u = 0;
-                var w = window.innerWidth;
-                var h = window.innerHeight;
+                var w = Math.max(
+                    1,
+                    window.innerWidth || root.clientWidth || 1
+                );
+                var h = Math.max(
+                    1,
+                    window.innerHeight || root.clientHeight || 1
+                );
                 var isPortrait = h > w;
+                var u = isPortrait
+                    ? (w / 400)
+                    : Math.min(w / 739, h / 415);
 
-                if (isPortrait) {
-                    u = w / 400;
-                } else {
-                    u = Math.min(w / 739, h / 415);
-                }
-
-                document.documentElement.style.setProperty('--u', u + 'px');
-                void document.documentElement.offsetHeight;
-                if (document.body) {
-                    void document.body.offsetHeight;
-                }
-
-                // DIAG: always print
-                console.log('DIAG_VIEWPORT: w=' + w + ' h=' + h + ' u=' + u + ' portrait=' + isPortrait);
+                // Do not depend on dvh or viewport CSS math
+                // in the legacy WebView used by the verifier.
+                root.style.setProperty('--u', u + 'px', 'important');
+                root.style.setProperty('width', '100%', 'important');
+                root.style.setProperty('height', h + 'px', 'important');
+                body.style.setProperty('width', '100%', 'important');
+                body.style.setProperty('height', h + 'px', 'important');
 
                 var stage = document.querySelector('.stage');
 
+                console.log(
+                    'DIAG_VIEWPORT: w=' + w +
+                    ' h=' + h +
+                    ' u=' + u +
+                    ' portrait=' + isPortrait
+                );
+
                 if (!stage) {
                     console.log('DIAG_STAGE_NOT_FOUND');
-                } else {
-                    // Portrait: keep 100% x innerHeight
-                    // Landscape: explicit 739*u x 415*u
-                    if (isPortrait) {
-                        stage.style.setProperty('width', '100%', 'important');
-                        stage.style.setProperty('height', h + 'px', 'important');
-                    } else {
-                        stage.style.setProperty('width', (739 * u) + 'px', 'important');
-                        stage.style.setProperty('height', (415 * u) + 'px', 'important');
-                    }
-
-                    void stage.offsetHeight;
-
-                    var stageCS = window.getComputedStyle(stage);
-                    console.log('DIAG_STAGE: offsetW=' + stage.offsetWidth +
-                        ' offsetH=' + stage.offsetHeight +
-                        ' clientW=' + stage.clientWidth +
-                        ' clientH=' + stage.clientHeight +
-                        ' computedW=' + stageCS.width +
-                        ' computedH=' + stageCS.height +
-                        ' display=' + stageCS.display +
-                        ' visibility=' + stageCS.visibility +
-                        ' opacity=' + stageCS.opacity +
-                        ' zIndex=' + stageCS.zIndex +
-                        ' position=' + stageCS.position +
-                        ' overflow=' + stageCS.overflow);
+                    return false;
                 }
 
-                // DIAG: panel
+                if (isPortrait) {
+                    stage.style.setProperty('width', '100%', 'important');
+                    stage.style.setProperty('height', h + 'px', 'important');
+                    stage.style.setProperty('margin', '0', 'important');
+                    stage.style.setProperty('top', '0', 'important');
+                    stage.style.setProperty('transform', 'none', 'important');
+                } else {
+                    stage.style.setProperty(
+                        'width',
+                        (739 * u) + 'px',
+                        'important'
+                    );
+                    stage.style.setProperty(
+                        'height',
+                        (415 * u) + 'px',
+                        'important'
+                    );
+                    stage.style.setProperty(
+                        'margin',
+                        '0 auto',
+                        'important'
+                    );
+                    stage.style.setProperty(
+                        'top',
+                        '50%',
+                        'important'
+                    );
+                    stage.style.setProperty(
+                        'transform',
+                        'translateY(-50%)',
+                        'important'
+                    );
+                }
+
+                void root.offsetHeight;
+                void body.offsetHeight;
+                void stage.offsetHeight;
+
+                var stageCS = window.getComputedStyle(stage);
+                console.log(
+                    'DIAG_STAGE: offsetW=' + stage.offsetWidth +
+                    ' offsetH=' + stage.offsetHeight +
+                    ' computedW=' + stageCS.width +
+                    ' computedH=' + stageCS.height +
+                    ' display=' + stageCS.display +
+                    ' visibility=' + stageCS.visibility +
+                    ' opacity=' + stageCS.opacity +
+                    ' position=' + stageCS.position +
+                    ' top=' + stageCS.top +
+                    ' left=' + stageCS.left +
+                    ' transform=' + stageCS.transform
+                );
+
                 var panel = document.querySelector('.panel');
                 if (panel) {
                     var panelCS = window.getComputedStyle(panel);
-                    console.log('DIAG_PANEL: offsetW=' + panel.offsetWidth +
+                    console.log(
+                        'DIAG_PANEL: offsetW=' + panel.offsetWidth +
                         ' offsetH=' + panel.offsetHeight +
                         ' display=' + panelCS.display +
                         ' visibility=' + panelCS.visibility +
-                        ' opacity=' + panelCS.opacity +
-                        ' zIndex=' + panelCS.zIndex +
-                        ' position=' + panelCS.position);
-                } else {
-                    console.log('DIAG_PANEL_NOT_FOUND');
+                        ' opacity=' + panelCS.opacity
+                    );
                 }
 
-                // DIAG: account
                 var account = document.querySelector('.account-info-portrait');
                 if (account) {
                     var accountCS = window.getComputedStyle(account);
-                    console.log('DIAG_ACCOUNT: offsetW=' + account.offsetWidth +
+                    console.log(
+                        'DIAG_ACCOUNT: offsetW=' + account.offsetWidth +
                         ' offsetH=' + account.offsetHeight +
                         ' display=' + accountCS.display +
                         ' visibility=' + accountCS.visibility +
                         ' opacity=' + accountCS.opacity +
-                        ' transform=' + accountCS.transform);
-                } else {
-                    console.log('DIAG_ACCOUNT_NOT_FOUND');
+                        ' transform=' + accountCS.transform
+                    );
                 }
 
-                // DIAG: logo
                 var logo = document.querySelector('.landscape-logo');
                 if (logo) {
                     var logoCS = window.getComputedStyle(logo);
-                    console.log('DIAG_LOGO: offsetW=' + logo.offsetWidth +
+                    console.log(
+                        'DIAG_LOGO: offsetW=' + logo.offsetWidth +
                         ' offsetH=' + logo.offsetHeight +
                         ' display=' + logoCS.display +
                         ' visibility=' + logoCS.visibility +
-                        ' opacity=' + logoCS.opacity +
-                        ' position=' + logoCS.position);
-                } else {
-                    console.log('DIAG_LOGO_NOT_FOUND');
+                        ' opacity=' + logoCS.opacity
+                    );
                 }
 
-                // DIAG: body children
-                var bodyChildren = document.body.children;
-                console.log('DIAG_BODY: count=' + bodyChildren.length);
-                for (var i = 0; i < bodyChildren.length; i++) {
-                    var c = bodyChildren[i];
-                    var cCS = window.getComputedStyle(c);
-                    console.log('DIAG_BODY_' + i + ': tag=' + c.tagName +
-                        ' class=' + c.className +
-                        ' zIndex=' + cCS.zIndex +
-                        ' position=' + cCS.position +
-                        ' display=' + cCS.display);
-                }
+                console.log(
+                    'DIAG_ROOT_U: ' +
+                    root.style.getPropertyValue('--u')
+                );
+                console.log(
+                    'DIAG_MEDIA: portrait=' +
+                    window.matchMedia('(orientation: portrait)').matches +
+                    ' landscape=' +
+                    window.matchMedia('(orientation: landscape)').matches
+                );
 
-                console.log('DIAG_ROOT_U: ' + getComputedStyle(document.documentElement).getPropertyValue('--u'));
-                console.log('DIAG_MEDIA: portrait=' + window.matchMedia('(orientation: portrait)').matches +
-                    ' landscape=' + window.matchMedia('(orientation: landscape)').matches);
-
-                console.log('INJECT_U_DEBUG: w=' + w + ' h=' + h + ' u=' + u + ' (reflow+dvh fix)');
-                return u;
+                console.log('DIAG_LAYOUT_READY');
+                return true;
             }
-            calcU();
-            window.addEventListener('resize', calcU);
-            window.addEventListener('orientationchange', calcU);
+
+            function ensureLayout(attempt) {
+                if (calcU()) {
+                    return;
+                }
+
+                if (attempt < 40) {
+                    setTimeout(function() {
+                        ensureLayout(attempt + 1);
+                    }, 50);
+                    return;
+                }
+
+                console.log('DIAG_LAYOUT_FAILED_AFTER_RETRY');
+            }
+
+            function recalcAfterResize() {
+                setTimeout(function() {
+                    calcU();
+                }, 0);
+            }
+
+            if (!window.__GOLDY_LAYOUT_LISTENERS_BOUND__) {
+                window.__GOLDY_LAYOUT_LISTENERS_BOUND__ = true;
+                window.addEventListener(
+                    'resize',
+                    recalcAfterResize
+                );
+                window.addEventListener(
+                    'orientationchange',
+                    recalcAfterResize
+                );
+            }
+
+            ensureLayout(0);
         })();
     """.trimIndent()
+
     webView.evaluateJavascript(js, null)
 }
-
 /**
  * Pushes up to 30 movies to Goldy HTML UI via window.IPTV.setMovies
  */
