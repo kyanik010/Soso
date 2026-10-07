@@ -1,6 +1,12 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 import java.util.Properties
 
+// Detect if a release task is being requested
+val isReleaseTask = gradle.startParameter.taskNames.any { taskName ->
+  taskName.contains("Release", ignoreCase = true) ||
+    taskName.contains("BundleRelease", ignoreCase = true)
+}
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -33,7 +39,7 @@ android {
         storePassword = props["storePassword"] as String
         keyAlias = props["keyAlias"] as String
         keyPassword = props["keyPassword"] as String
-      } else {
+      } else if (isReleaseTask) {
         throw GradleException(
           "keystore.properties is required for release builds. " +
             "Create it in the project root before running assembleRelease."
