@@ -328,6 +328,13 @@ fun injectU(webView: WebView) {
                     html.classList.toggle('goldy-force-portrait', actualPortrait);
                     html.classList.toggle('goldy-force-landscape', !actualPortrait);
 
+                    // Re-render after the orientation compatibility shim is installed.
+                    // The page may have rendered using the legacy WebView's incorrect
+                    // media-query result before injectU() ran (e.g. 6 posters in landscape).
+                    if (typeof window.render === 'function') {
+                        window.render();
+                    }
+
                     function set(el, name, value) {
                         if (el) el.style.setProperty(name, value, 'important');
                     }
