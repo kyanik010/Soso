@@ -117,7 +117,7 @@ fun GoldyHomeScreen(
                                 it.requestFocus()
                             }
                         }
-                    }
+
                         override fun onReceivedError(
                             view: WebView?,
                             request: WebResourceRequest?,
@@ -143,6 +143,7 @@ fun GoldyHomeScreen(
                                     "status=${errorResponse?.statusCode}"
                             )
                         }
+                    }
 
                     addJavascriptInterface(bridge, "Android")
                     loadUrl("https://appassets.androidplatform.net/goldy.html")
