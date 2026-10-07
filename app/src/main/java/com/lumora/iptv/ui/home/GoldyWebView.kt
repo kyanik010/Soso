@@ -105,23 +105,6 @@ fun GoldyHomeScreen(
                             view: WebView,
                             request: WebResourceRequest
                         ): WebResourceResponse? {
-                            /**
-                             * TEMPORARY ASSET INTERCEPTOR
-                             *
-                             * 40.png -> goldy_logo.png
-                             *
-                             * goldy.html is the source of truth and references 40.png.
-                             * A real 40.png asset should eventually replace this interceptor.
-                             */
-                            val urlStr = request.url.toString()
-                            if (urlStr.endsWith("/40.png") || urlStr.endsWith("40.png")) {
-                                try {
-                                    val stream = ctx.assets.open("goldy_logo.png")
-                                    return WebResourceResponse("image/png", null, stream)
-                                } catch (e: Exception) {
-                                    AppLogger.d("GoldyWebView", "Interception fallback for 40.png")
-                                }
-                            }
                             return assetLoader.shouldInterceptRequest(request.url)
                         }
 
