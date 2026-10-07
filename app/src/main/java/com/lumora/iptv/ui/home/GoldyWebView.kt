@@ -127,9 +127,11 @@ fun GoldyHomeScreen(
                         builtInZoomControls = false
                         displayZoomControls = false
                         cacheMode = WebSettings.LOAD_DEFAULT
-                        useWideViewPort = true
-                        loadWithOverviewMode = true
-                        setInitialScale(0)
+                        // Let the HTML viewport meta tag be the single source of truth.
+                        // Wide/overview scaling can create a CSS viewport that differs from
+                        // window.innerWidth/innerHeight on the legacy verifier WebView.
+                        useWideViewPort = false
+                        loadWithOverviewMode = false
                     }
 
                     setBackgroundColor(Color.parseColor("#020617"))
