@@ -35,6 +35,9 @@ interface IptvDao {
     @Query("UPDATE channels SET isFavorite = :isFav WHERE streamId = :streamId")
     suspend fun setChannelFavorite(streamId: Int, isFav: Boolean)
 
+    @Query("SELECT * FROM channels WHERE streamId = :streamId LIMIT 1")
+    suspend fun getChannelById(streamId: Int): ChannelEntity?
+
     @Query("DELETE FROM channels")
     suspend fun clearChannels()
 
@@ -82,6 +85,9 @@ interface IptvDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEpisodes(episodes: List<EpisodeEntity>)
+
+    @Query("SELECT * FROM episodes WHERE episodeId = :episodeId LIMIT 1")
+    suspend fun getEpisodeById(episodeId: String): EpisodeEntity?
 
     @Query("DELETE FROM episodes WHERE seriesId = :seriesId")
     suspend fun clearEpisodesForSeries(seriesId: Int)
