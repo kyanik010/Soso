@@ -63,11 +63,20 @@ fun AppNavHost(
                         val streamId = id.toIntOrNull() ?: 0
                         val movie = repository.getMovieById(streamId)
                         if (movie != null && movie.streamUrl.isNotBlank()) {
+                            val streamId = movie.id.toIntOrNull()
+                            if (streamId == null) {
+                                com.lumora.iptv.util.AppLogger.e(
+                                    "AppNavHost",
+                                    "Invalid movie id: ${movie.id}"
+                                )
+                                return@launch
+                            }
+
                             val sourceId = Screen.Player.SOURCE_VOD + "_" + movie.id
                             repository.savePlaybackSource(
                                 sourceId,
                                 com.lumora.iptv.player.PlaybackSource.Vod(
-                                    streamId = movie.id.toInt(),
+                                    streamId = streamId,
                                     container = movie.containerExtension
                                 ),
                                 movie.streamUrl
@@ -96,11 +105,20 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onPlayMovie = { movie ->
                     scope.launch {
+                        val streamId = movie.id.toIntOrNull()
+                        if (streamId == null) {
+                            com.lumora.iptv.util.AppLogger.e(
+                                "AppNavHost",
+                                "Invalid movie id: ${movie.id}"
+                            )
+                            return@launch
+                        }
+
                         val sourceId = Screen.Player.SOURCE_VOD + "_" + movie.id
                         repository.savePlaybackSource(
                             sourceId,
                             com.lumora.iptv.player.PlaybackSource.Vod(
-                                streamId = movie.id.toInt(),
+                                streamId = streamId,
                                 container = movie.containerExtension
                             ),
                             movie.streamUrl
