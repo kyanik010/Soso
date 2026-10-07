@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soso Goldy Preview</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#111;color:#fff}
+body{display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button{border:1px solid #555;background:#222;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer}
+button:hover{background:#333}
+.viewport{width:393px;height:851px;max-width:calc(100vw - 28px);max-height:calc(100vh - 92px);background:#020617;overflow:hidden;box-shadow:0 0 0 2px #444,0 12px 40px #000}
+iframe{display:block;border:0;width:100%;height:100%;background:#020617}
+.label{font-size:12px;color:#aaa}
+@media(max-width:700px){
+  body{padding:8px;gap:8px}
+  .viewport{max-width:calc(100vw - 16px);max-height:calc(100vh - 82px)}
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="setSize(393,851)">Portrait 393×851</button>
+  <button onclick="setSize(851,393)">Landscape 851×393</button>
+  <button onclick="setSize(412,915)">Portrait 412×915</button>
+  <button onclick="setSize(915,412)">Landscape 915×412</button>
+</div>
+<div class="label" id="label">393 × 851</div>
+<div class="viewport" id="viewport">
+  <iframe src="goldy.html" title="Goldy preview"></iframe>
+</div>
+<script>
+function setSize(w,h){
+  const v=document.getElementById('viewport');
+  const label=document.getElementById('label');
+  v.style.width=w+'px';
+  v.style.height=h+'px';
+  label.textContent=w+' × '+h;
+}
+</script>
+</body>
+</html>
