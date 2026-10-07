@@ -20,7 +20,6 @@ import com.lumora.iptv.ui.series.SeriesScreen
 import com.lumora.iptv.ui.settings.SettingsScreen
 import com.lumora.iptv.ui.splash.SplashScreen
 import kotlinx.coroutines.launch
-import java.net.URLDecoder
 
 @Composable
 fun AppNavHost(
@@ -163,21 +162,21 @@ fun AppNavHost(
         composable(
             route = Screen.Player.route,
             arguments = listOf(
-                navArgument("title") { type = NavType.StringType },
-                navArgument("url") { type = NavType.StringType },
-                navArgument("mediaType") { type = NavType.StringType }
+                navArgument("sourceId") { type = NavType.StringType },
+                navArgument("mediaType") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val rawTitle = backStackEntry.arguments?.getString("title") ?: ""
-            val rawUrl = backStackEntry.arguments?.getString("url") ?: ""
+            val sourceId = backStackEntry.arguments?.getString("sourceId") ?: ""
             val mediaType = backStackEntry.arguments?.getString("mediaType") ?: "channel"
-
-            val title = URLDecoder.decode(rawTitle, "UTF-8")
-            val url = URLDecoder.decode(rawUrl, "UTF-8")
+            val title = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("title") ?: "",
+                "UTF-8"
+            )
 
             PlayerScreen(
                 title = title,
-                streamUrl = url,
+                sourceId = sourceId,
                 mediaType = mediaType,
                 repository = repository,
                 onBack = { navController.popBackStack() }
