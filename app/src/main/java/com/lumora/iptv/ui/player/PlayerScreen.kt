@@ -42,6 +42,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +72,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.lumora.iptv.data.iptv.IptvRepository
+import com.lumora.iptv.player.PlaybackSource
+import com.lumora.iptv.player.PlaybackUrlBuilder
 import com.lumora.iptv.player.PlayerFactory
 import com.lumora.iptv.ui.theme.GoldyColors
 import com.lumora.iptv.util.AppLogger
@@ -80,7 +83,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun PlayerScreen(
     title: String,
-    streamUrl: String,
+    sourceId: String,
     mediaType: String, // "channel", "movie", "episode"
     repository: IptvRepository,
     onBack: () -> Unit
@@ -99,9 +102,125 @@ fun PlayerScreen(
     var subtitleDelayMs by remember { mutableLongStateOf(0L) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
+    val sourceResult by produceState<Result<PlaybackSource?>?>(initialValue = null, key1 = sourceId) {
+        value = runCatching { repository.getPlaybackSource(sourceId) }
+    }
+
+    if (sourceResult == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = GoldyColors.Cyan,
+                modifier = Modifier.size(50.dp),
+                strokeWidth = 3.dp
+            )
+        }
+        return
+    }
+
+    val playbackSource = sourceResult.getOrNull()
+    if (sourceResult.isFailure || playbackSource == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "تعذر العثور على مصدر التشغيل",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "سيتم الرجوع تلقائياً...",
+                    color = Color.LightGray,
+                    fontSize = 14.sp
+                )
+            }
+        }
+        LaunchedEffect(sourceId) {
+            delay(3000)
+            onBack()
+        }
+        return
+    }
+
+    val credentialsResult by produceState<Result<com.lumora.iptv.data.model.Credentials?>?>(initialValue = null, key1 = playbackSource) {
+        value = runCatching { repository.getCredentials() }
+    }
+
+    if (playbackSource !is PlaybackSource.M3uUrl && credentialsResult == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = GoldyColors.Cyan,
+                modifier = Modifier.size(50.dp),
+                strokeWidth = 3.dp
+            )
+        }
+        return
+    }
+
+    if (playbackSource !is PlaybackSource.M3uUrl && (
+            credentialsResult?.isFailure == true ||
+            credentialsResult?.getOrNull() == null
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "تعذر تحميل بيانات الاشتراك",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "سيتم الرجوع تلقائياً...",
+                    color = Color.LightGray,
+                    fontSize = 14.sp
+                )
+            }
+        }
+        LaunchedEffect(sourceId) {
+            delay(3000)
+            onBack()
+        }
+        return
+    }
+
+    val streamUrl = if (playbackSource is PlaybackSource.M3uUrl) {
+        playbackSource.url
+    } else {
+        val credentials = credentialsResult!!.getOrThrow()!!
+        PlaybackUrlBuilder(
+            credentials.serverUrl,
+            credentials.username,
+            credentials.password
+        ).build(playbackSource)
+    }
+
     val isLive = mediaType == "channel"
 
-    val player: ExoPlayer = remember {
+    val player: ExoPlayer = remember(streamUrl) {
         PlayerFactory.createPlayer(context).apply {
             val mediaItem = PlayerFactory.buildMediaItem(streamUrl)
             setMediaItem(mediaItem)
