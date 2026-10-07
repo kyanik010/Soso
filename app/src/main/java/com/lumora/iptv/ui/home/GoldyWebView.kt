@@ -119,9 +119,9 @@ fun GoldyHomeScreen(
                         }
 
                         override fun onReceivedError(
-                            view: WebView?,
-                            request: WebResourceRequest?,
-                            error: WebResourceErrorCompat?
+                            view: WebView,
+                            request: WebResourceRequest,
+                            error: WebResourceErrorCompat
                         ) {
                             super.onReceivedError(view, request, error)
                             AppLogger.e(
@@ -132,9 +132,9 @@ fun GoldyHomeScreen(
                         }
 
                         override fun onReceivedHttpError(
-                            view: WebView?,
-                            request: WebResourceRequest?,
-                            errorResponse: WebResourceResponse?
+                            view: WebView,
+                            request: WebResourceRequest,
+                            errorResponse: WebResourceResponse
                         ) {
                             super.onReceivedHttpError(view, request, errorResponse)
                             AppLogger.e(
