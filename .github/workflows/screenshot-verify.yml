@@ -1,0 +1,86 @@
+name: Screenshot Verification
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/screenshot-verify.yml'
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node/kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Launch Emulator and Capture Screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            echo "=== Waiting for emulator ==="
+            adb wait-for-device
+
+            echo "=== Installing APK ==="
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+            echo "=== Launching app ==="
+            adb shell monkey -p com.lumora.iptv -c android.intent.category.LAUNCHER 1
+
+            echo "=== Waiting for UI to render ==="
+            sleep 12
+
+            echo "=== Capturing Portrait ==="
+            adb exec-out screencap -p > portrait.png
+
+            echo "=== Switching to Landscape ==="
+            adb shell settings put system accelerometer_rotation 0
+            adb shell settings put system user_rotation 1
+            sleep 5
+
+            echo "=== Capturing Landscape ==="
+            adb exec-out screencap -p > landscape.png
+
+            echo "=== Dumping logcat ==="
+            adb logcat -d > logcat.txt
+
+            echo "=== Done ==="
+            ls -la *.png *.txt
+
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: |
+            portrait.png
+            landscape.png
+            logcat.txt
+          retention-days: 14
