@@ -35,6 +35,7 @@ import androidx.webkit.WebResourceErrorCompat
 import com.lumora.iptv.bridge.GoldyBridge
 import com.lumora.iptv.data.iptv.IptvRepository
 import com.lumora.iptv.data.model.Movie
+import com.lumora.iptv.data.local.AccountEntity
 import com.lumora.iptv.ui.theme.GoldyColors
 import com.lumora.iptv.util.AppLogger
 import org.json.JSONArray
@@ -52,6 +53,7 @@ fun GoldyHomeScreen(
 ) {
     val context = LocalContext.current
     val movies by repository.getAllMovies().collectAsState(initial = emptyList())
+    val account by repository.accountFlow.collectAsState(initial = null)
 
     // Hold reference to WebView for evaluation
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
@@ -60,6 +62,7 @@ fun GoldyHomeScreen(
         val finishInitialization: () -> Unit = {
             injectU(view)
             sendMoviesToWebView(view, movies)
+            sendAccountToWebView(view, account)
             view.post {
                 view.requestLayout()
                 view.invalidate()
@@ -102,6 +105,12 @@ fun GoldyHomeScreen(
     LaunchedEffect(movies) {
         webViewRef?.let { wv ->
             sendMoviesToWebView(wv, movies)
+        }
+    }
+
+    LaunchedEffect(account) {
+        webViewRef?.let { wv ->
+            sendAccountToWebView(wv, account)
         }
     }
 
@@ -239,6 +248,7 @@ fun GoldyHomeScreen(
                 if (movies.isNotEmpty()) {
                     sendMoviesToWebView(webView, movies)
                 }
+                sendAccountToWebView(webView, account)
             }
         )
     }
@@ -323,6 +333,25 @@ fun sendMoviesToWebView(webView: WebView, movies: List<Movie>) {
             AppLogger.d("GoldyWebView", "Pushed ${minOf(movies.size, 30)} movies to Goldy HTML")
         } catch (e: Exception) {
             AppLogger.e("GoldyWebView", "Failed to evaluate Javascript setMovies", e)
+        }
+    }
+}
+
+
+fun sendAccountToWebView(webView: WebView, account: AccountEntity?) {
+    Handler(Looper.getMainLooper()).post {
+        try {
+            val json = if (account == null) "null" else JSONObject().apply {
+                put("username", account.username)
+                put("expiryDate", account.expiryDate)
+            }.toString()
+            webView.evaluateJavascript(
+                "if (window.IPTV && typeof window.IPTV.setAccount === 'function') { window.IPTV.setAccount($json); }",
+                null
+            )
+            AppLogger.d("GoldyWebView", "Pushed account to Goldy HTML")
+        } catch (e: Exception) {
+            AppLogger.e("GoldyWebView", "Failed to push account to Goldy HTML", e)
         }
     }
 }
