@@ -291,6 +291,147 @@ fun injectU(webView: WebView) {
                 // Do not depend on dvh or viewport CSS math
                 // in the legacy WebView used by the verifier.
                 root.style.setProperty('--u', u + 'px', 'important');
+                
+                // ============================================
+                // PHASE 3: CSS Orientation Compatibility Layer
+                // ============================================
+                // Android WebView reports wrong @media (orientation:*) even with
+                // useWideViewPort + loadWithOverviewMode. We toggle a class on <html>
+                // based on the ACTUAL viewport dimensions (innerWidth/innerHeight),
+                // and inject mirror rules that reproduce the SAME display: declarations
+                // that goldy.html already applies via @media (orientation: portrait).
+                //
+                // IMPORTANT: This layer does NOT introduce any new design.
+                // It ONLY mirrors the existing rules from goldy.html when
+                // WebView's @media reports the wrong orientation.
+                (function() {
+                    var innerW = window.innerWidth;
+                    var innerH = window.innerHeight;
+                    var actualPortrait = innerH > innerW;
+                    var mqPortrait = window.matchMedia('(orientation: portrait)').matches;
+
+                    var html = document.documentElement;
+
+                    // Toggle helper classes based on ACTUAL viewport
+                    html.classList.toggle('goldy-force-portrait', actualPortrait);
+                    html.classList.toggle('goldy-force-landscape', !actualPortrait);
+
+                    // Inject compatibility CSS once
+                    if (!document.getElementById('goldy-orientation-compat')) {
+                        var style = document.createElement('style');
+                        style.id = 'goldy-orientation-compat';
+                        style.textContent = [
+                            // ------------------------------------------------
+                            // When actual viewport is PORTRAIT but WebView says landscape
+                            // ------------------------------------------------
+
+                            // Hide landscape-only elements
+                            'html.goldy-force-portrait .landscape-logo { display: none !important; }',
+                            'html.goldy-force-portrait .account-info-landscape { display: none !important; }',
+                            'html.goldy-force-portrait h1,',
+                            'html.goldy-force-portrait .cat,',
+                            'html.goldy-force-portrait .tl,',
+                            'html.goldy-force-portrait .br,',
+                            'html.goldy-force-portrait .feat,',
+                            'html.goldy-force-portrait .info { display: none !important; }',
+
+                            // Show portrait-only elements
+                            'html.goldy-force-portrait .account-info-portrait { display: block !important; }',
+
+                            // Restore portrait layout for .rail (mirror of goldy.html @media portrait)
+                            'html.goldy-force-portrait .rail {',
+                            '  width: 100% !important;',
+                            '  margin-top: calc(20 * var(--u)) !important;',
+                            '  display: flex !important;',
+                            '  flex-direction: column !important;',
+                            '  align-items: center !important;',
+                            '  left: auto !important;',
+                            '  top: auto !important;',
+                            '  max-width: none !important;',
+                            '  padding: 0 !important;',
+                            '}',
+
+                            // Restore portrait row
+                            'html.goldy-force-portrait .row {',
+                            '  width: 100% !important;',
+                            '  display: flex !important;',
+                            '  justify-content: center !important;',
+                            '  gap: calc(11 * var(--u)) !important;',
+                            '  padding: calc(5 * var(--u)) !important;',
+                            '  overflow: visible !important;',
+                            '  margin-top: 0 !important;',
+                            '}',
+                            'html.goldy-force-portrait .row + .row {',
+                            '  margin-top: calc(13 * var(--u)) !important;',
+                            '}',
+
+                            // Restore portrait poster size
+                            'html.goldy-force-portrait .poster {',
+                            '  width: calc(105 * var(--u)) !important;',
+                            '  height: calc(172 * var(--u)) !important;',
+                            '}',
+
+                            // Restore portrait panel
+                            'html.goldy-force-portrait .panel {',
+                            '  width: 100% !important;',
+                            '  height: auto !important;',
+                            '  margin-top: auto !important;',
+                            '  padding: calc(8 * var(--u)) !important;',
+                            '  display: grid !important;',
+                            '  grid-template-columns: 1fr 1fr !important;',
+                            '  gap: calc(8 * var(--u)) !important;',
+                            '  left: auto !important;',
+                            '  top: auto !important;',
+                            '  transform: translateY(calc(-10 * var(--u))) !important;',
+                            '}',
+
+                            // Restore portrait button size
+                            'html.goldy-force-portrait .btn,',
+                            'html.goldy-force-portrait .btn.act {',
+                            '  width: 100% !important;',
+                            '  height: calc(52 * var(--u)) !important;',
+                            '  justify-content: center !important;',
+                            '  padding: 0 !important;',
+                            '  gap: calc(8 * var(--u)) !important;',
+                            '  font-size: calc(14 * var(--u)) !important;',
+                            '  flex: none !important;',
+                            '}',
+                            'html.goldy-force-portrait .btn svg {',
+                            '  width: calc(26 * var(--u)) !important;',
+                            '  height: calc(27 * var(--u)) !important;',
+                            '}',
+
+                            // Restore stage flex layout for portrait
+                            'html.goldy-force-portrait .stage {',
+                            '  width: 100% !important;',
+                            '  height: 100dvh !important;',
+                            '  top: 0 !important;',
+                            '  transform: none !important;',
+                            '  display: flex !important;',
+                            '  flex-direction: column !important;',
+                            '  align-items: center !important;',
+                            '  justify-content: flex-start !important;',
+                            '  padding: calc(12 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u)) !important;',
+                            '}',
+                            'html.goldy-force-portrait .stage > * {',
+                            '  position: relative !important;',
+                            '  left: auto !important;',
+                            '  top: auto !important;',
+                            '}',
+
+                            // ------------------------------------------------
+                            // When actual viewport is LANDSCAPE but WebView says portrait
+                            // ------------------------------------------------
+                            'html.goldy-force-landscape .account-info-portrait { display: none !important; }'
+                        ].join('\n');
+                        document.head.appendChild(style);
+                    }
+
+                    console.log('DIAG_ORIENTATION_COMPAT: innerW=' + innerW + ' innerH=' + innerH +
+                        ' actualPortrait=' + actualPortrait +
+                        ' mqPortrait=' + mqPortrait +
+                        ' forceClassApplied=' + actualPortrait);
+                })();
                 root.style.setProperty('width', '100%', 'important');
                 root.style.setProperty('height', h + 'px', 'important');
                 body.style.setProperty('width', '100%', 'important');
