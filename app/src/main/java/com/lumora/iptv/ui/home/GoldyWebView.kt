@@ -127,6 +127,9 @@ fun GoldyHomeScreen(
                         builtInZoomControls = false
                         displayZoomControls = false
                         cacheMode = WebSettings.LOAD_DEFAULT
+                        useWideViewPort = true
+                        loadWithOverviewMode = true
+                        setInitialScale(0)
                     }
 
                     setBackgroundColor(Color.parseColor("#020617"))
@@ -307,39 +310,11 @@ fun injectU(webView: WebView) {
                     return false;
                 }
 
-                if (isPortrait) {
-                    stage.style.setProperty('width', '100%', 'important');
-                    stage.style.setProperty('height', h + 'px', 'important');
-                    stage.style.setProperty('margin', '0', 'important');
-                    stage.style.setProperty('top', '0', 'important');
-                    stage.style.setProperty('transform', 'none', 'important');
-                } else {
-                    stage.style.setProperty(
-                        'width',
-                        (739 * u) + 'px',
-                        'important'
-                    );
-                    stage.style.setProperty(
-                        'height',
-                        (415 * u) + 'px',
-                        'important'
-                    );
-                    stage.style.setProperty(
-                        'margin',
-                        '0 auto',
-                        'important'
-                    );
-                    stage.style.setProperty(
-                        'top',
-                        '50%',
-                        'important'
-                    );
-                    stage.style.setProperty(
-                        'transform',
-                        'translateY(-50%)',
-                        'important'
-                    );
-                }
+                // Do not override .stage dimensions here.
+                // goldy.html remains the single source of truth for
+                // portrait/landscape stage sizing. The WebView viewport
+                // settings above are responsible for giving its CSS the
+                // correct orientation context.
 
                 void root.offsetHeight;
                 void body.offsetHeight;
