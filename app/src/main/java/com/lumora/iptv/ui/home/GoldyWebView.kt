@@ -343,6 +343,16 @@ fun injectU(webView: WebView) {
                     var account = document.querySelector('.account-info-portrait');
                     var panel = document.querySelector('.panel');
                     var logo = document.querySelector('.landscape-logo');
+                    function clear(el, names) {
+                        if (!el) return;
+                        names.forEach(function(name) { el.style.removeProperty(name); });
+                    }
+                    var portraitProperties = [
+                        'width','height','overflow','top','left','transform','margin','display',
+                        'flex-direction','align-items','justify-content','padding','box-sizing',
+                        'position','z-index','pointer-events','max-width','order','gap',
+                        'flex','grid-template-columns','font-size'
+                    ];
 
                     if (actualPortrait) {
                         setMany(html, { width: innerW + 'px', height: innerH + 'px', overflow: 'hidden' });
@@ -358,6 +368,22 @@ fun injectU(webView: WebView) {
                         setMany(panel, { width: '100%', height: 'auto', 'margin-top': 'auto', padding: px(8), display: 'grid', 'grid-template-columns': '1fr 1fr', gap: px(8), left: 'auto', top: 'auto', transform: 'translateY(' + px(-10) + ')', order: '4' });
                         document.querySelectorAll('.btn, .btn.act').forEach(function(btn){ setMany(btn, { width: '100%', height: px(52), 'justify-content': 'center', padding: '0', gap: px(8), 'font-size': px(14), flex: 'none' }); });
                         document.querySelectorAll('.btn svg').forEach(function(svg){ setMany(svg, { width: px(26), height: px(27) }); });
+                    } else {
+                        // Remove only the properties owned by the portrait override so the
+                        // original landscape CSS becomes authoritative again after rotation.
+                        clear(html, ['width','height','overflow']);
+                        clear(document.body, ['width','height','overflow']);
+                        clear(stage, portraitProperties);
+                        if (stage) Array.prototype.forEach.call(stage.children, function(el) { clear(el, portraitProperties); });
+                        clear(logo, ['display','position','left','top','transform','width','height','align-items','justify-content','z-index','pointer-events']);
+                        ['.account-info-landscape','h1','.cat','.tl','.br','.feat','.info'].forEach(function(sel){ document.querySelectorAll(sel).forEach(function(el){ clear(el, ['display']); }); });
+                        clear(rail, portraitProperties);
+                        Array.prototype.forEach.call(rows, function(row){ clear(row, ['width','display','justify-content','gap','padding','overflow','margin-top']); });
+                        Array.prototype.forEach.call(posters, function(p){ clear(p, ['width','height','flex']); });
+                        clear(account, portraitProperties);
+                        clear(panel, portraitProperties);
+                        document.querySelectorAll('.btn, .btn.act').forEach(function(btn){ clear(btn, ['width','height','justify-content','padding','gap','font-size','flex']); });
+                        document.querySelectorAll('.btn svg').forEach(function(svg){ clear(svg, ['width','height']); });
                     }
 
                     console.log('DIAG_ORIENTATION_COMPAT: w=' + innerW + ' h=' + innerH +
