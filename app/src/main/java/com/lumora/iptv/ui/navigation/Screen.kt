@@ -1,7 +1,5 @@
 package com.lumora.iptv.ui.navigation
 
-import java.net.URLEncoder
-
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object GoldyHome : Screen("goldy_home")
@@ -13,11 +11,14 @@ sealed class Screen(val route: String) {
     object Live : Screen("live")
     object Settings : Screen("settings")
     object Account : Screen("account")
-    object Player : Screen("player/{title}/{url}/{mediaType}") {
-        fun createRoute(title: String, url: String, mediaType: String): String {
-            val encTitle = URLEncoder.encode(title, "UTF-8")
-            val encUrl = URLEncoder.encode(url, "UTF-8")
-            return "player/$encTitle/$encUrl/$mediaType"
+    object Player : Screen("player/{sourceId}/{mediaType}/{title}") {
+        const val SOURCE_LIVE = "live"
+        const val SOURCE_VOD = "vod"
+        const val SOURCE_EPISODE = "episode"
+
+        fun createRoute(sourceId: String, mediaType: String, title: String): String {
+            val encTitle = java.net.URLEncoder.encode(title, "UTF-8")
+            return "player/$sourceId/$mediaType/$encTitle"
         }
     }
 }
