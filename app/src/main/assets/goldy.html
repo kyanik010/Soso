@@ -8,16 +8,14 @@
 <style>
 
 :root{
-  --u:min(calc(100vw / 739),calc(100dvh / 415));
+  --u:min(calc(100vw / 739),calc(100vh / 415));
   --cyan:#00d4ff;
   --cyan-light:#7dd3fc;
   --bg:#020617;
 }
 
-@media (orientation:portrait){
-  :root{
-    --u:calc(100vw / 400);
-  }
+html.goldy-portrait{
+  --u:calc(100vw / 400);
 }
 
 *{
@@ -628,18 +626,18 @@ h1{
    LANDSCAPE ONLY
    ========================================================= */
 
-@media (orientation:landscape){
 
-  h1,
-  .cat,
-  .tl,
-  .br,
-  .feat,
-  .info{
+
+  html.goldy-landscape h1,
+html.goldy-landscape .cat,
+html.goldy-landscape .tl,
+html.goldy-landscape .br,
+html.goldy-landscape .feat,
+html.goldy-landscape .info{
     display:none !important;
   }
 
-  .rail{
+  html.goldy-landscape .rail{
     top:calc(500 * var(--u));
     left:0;
     width:100%;
@@ -647,21 +645,21 @@ h1{
     padding:0 calc(35 * var(--u));
   }
 
-  .row{
+  html.goldy-landscape .row{
     gap:calc(20 * var(--u));
   }
 
-  .poster{
+  html.goldy-landscape .poster{
     width:calc(145 * var(--u));
     height:calc(235 * var(--u));
   }
 
-  .poster.sel,
-  .poster:focus-visible{
+  html.goldy-landscape .poster.sel,
+html.goldy-landscape .poster:focus-visible{
     transform:scale(1.06);
   }
 
-  .panel{
+  html.goldy-landscape .panel{
     top:calc(325 * var(--u));
   }
 
@@ -670,7 +668,7 @@ h1{
      LANDSCAPE LOGO
      ======================================================= */
 
-  .landscape-logo{
+  html.goldy-landscape .landscape-logo{
 
 display:flex;
 
@@ -692,7 +690,7 @@ height:calc(160 * var(--u));
     pointer-events:none;
   }
 
-  .landscape-logo img{
+  html.goldy-landscape .landscape-logo img{
 
     display:block;
 
@@ -713,7 +711,7 @@ height:calc(160 * var(--u));
      LANDSCAPE ACCOUNT
      ======================================================= */
 
-  .account-info-landscape{
+  html.goldy-landscape .account-info-landscape{
 
     display:flex;
 
@@ -735,7 +733,7 @@ height:calc(160 * var(--u));
     z-index:20;
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-title{
 
     display:flex;
@@ -758,7 +756,7 @@ height:calc(160 * var(--u));
     white-space:nowrap;
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-user-icon{
 
     display:flex;
@@ -781,7 +779,7 @@ height:calc(160 * var(--u));
       rgba(0,212,255,.18);
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-user-icon svg{
 
     width:calc(17 * var(--u));
@@ -797,7 +795,7 @@ height:calc(160 * var(--u));
     stroke-linejoin:round;
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-line{
 
     width:100%;
@@ -815,7 +813,7 @@ height:calc(160 * var(--u));
     margin-bottom:calc(8 * var(--u));
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-label{
 
     color:
@@ -829,7 +827,7 @@ height:calc(160 * var(--u));
     white-space:nowrap;
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-value{
 
     color:#e0f2fe;
@@ -844,29 +842,29 @@ height:calc(160 * var(--u));
     text-align:center;
   }
 
-  .account-info-landscape
+  html.goldy-landscape .account-info-landscape
   .account-expiry{
     color:var(--cyan-light);
   }
 
-}
+
 
 
 /* =========================================================
    PORTRAIT ONLY
    ======================================================== */
 
-@media (orientation:portrait){
 
-  html,
-  body{
-    height:100dvh;
+
+  html.goldy-portrait html,
+html.goldy-portrait body{
+    height:100%;
   }
 
-  .stage{
+  html.goldy-portrait .stage{
 
     width:100%;
-    height:100dvh;
+    height:100%;
 
     top:0;
     transform:none;
@@ -885,28 +883,28 @@ height:calc(160 * var(--u));
       calc(10 * var(--u));
   }
 
-  .stage > *{
+  html.goldy-portrait .stage > *{
     position:relative;
     left:auto;
     top:auto;
   }
 
-  .rail{
+  html.goldy-portrait .rail{
     order:1;
   }
 
-  .account-info-portrait{
+  html.goldy-portrait .account-info-portrait{
     order:2;
   }
 
-  .panel{
+  html.goldy-portrait .panel{
     order:3;
   }
 
-  .tl,
-  .br,
-  .info,
-  .feat{
+  html.goldy-portrait .tl,
+html.goldy-portrait .br,
+html.goldy-portrait .info,
+html.goldy-portrait .feat{
     display:none !important;
   }
 
@@ -915,7 +913,7 @@ height:calc(160 * var(--u));
      PORTRAIT ACCOUNT
      ======================================================= */
 
-  .account-info-portrait{
+  html.goldy-portrait .account-info-portrait{
 
     display:block;
 
@@ -948,7 +946,7 @@ height:calc(160 * var(--u));
     z-index:5;
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-title{
 
     display:flex;
@@ -967,7 +965,7 @@ height:calc(160 * var(--u));
       Roboto,Arial,sans-serif;
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-user-icon{
 
     display:flex;
@@ -992,7 +990,7 @@ height:calc(160 * var(--u));
       rgba(0,212,255,.14);
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-user-icon svg{
 
     width:calc(12 * var(--u));
@@ -1008,7 +1006,7 @@ height:calc(160 * var(--u));
     stroke-linejoin:round;
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-line{
 
     display:flex;
@@ -1022,7 +1020,7 @@ height:calc(160 * var(--u));
     min-height:calc(14 * var(--u));
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-label{
 
     color:
@@ -1036,7 +1034,7 @@ height:calc(160 * var(--u));
     white-space:nowrap;
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-value{
 
     color:#e0f2fe;
@@ -1051,7 +1049,7 @@ height:calc(160 * var(--u));
     text-align:right;
   }
 
-  .account-info-portrait
+  html.goldy-portrait .account-info-portrait
   .account-expiry{
     color:var(--cyan-light);
   }
@@ -1061,7 +1059,7 @@ height:calc(160 * var(--u));
      PORTRAIT RAIL
      ======================================================= */
 
-  .rail{
+  html.goldy-portrait .rail{
 
     width:100%;
 
@@ -1074,11 +1072,11 @@ height:calc(160 * var(--u));
     align-items:center;
   }
 
-  h1{
+  html.goldy-portrait h1{
     display:none;
   }
 
-  .row{
+  html.goldy-portrait .row{
 
     width:100%;
 
@@ -1093,17 +1091,17 @@ height:calc(160 * var(--u));
     overflow:visible;
   }
 
-  .row + .row{
+  html.goldy-portrait .row + .row{
     margin-top:calc(13 * var(--u));
   }
 
-  .poster{
+  html.goldy-portrait .poster{
     width:calc(105 * var(--u));
     height:calc(172 * var(--u));
   }
 
-  .poster.sel,
-  .poster:focus-visible{
+  html.goldy-portrait .poster.sel,
+html.goldy-portrait .poster:focus-visible{
     transform:scale(1.045);
   }
 
@@ -1112,7 +1110,7 @@ height:calc(160 * var(--u));
      PORTRAIT MAIN BUTTONS — RAISED
      ======================================================= */
 
-  .panel{
+  html.goldy-portrait .panel{
 
     width:100%;
     height:auto;
@@ -1133,7 +1131,7 @@ height:calc(160 * var(--u));
       );
   }
 
-  .btn{
+  html.goldy-portrait .btn{
 
     width:100%;
 
@@ -1148,13 +1146,13 @@ height:calc(160 * var(--u));
     font-size:calc(14 * var(--u));
   }
 
-  .btn svg{
+  html.goldy-portrait .btn svg{
 
     width:calc(26 * var(--u));
     height:calc(27 * var(--u));
   }
 
-  #toast{
+  html.goldy-portrait #toast{
 
     top:auto;
 
@@ -1163,76 +1161,76 @@ height:calc(160 * var(--u));
     font-size:calc(14 * var(--u));
   }
 
-}
+
 
 
 /* =========================================================
    SMALL PORTRAIT
    ========================================================= */
 
-@media (orientation:portrait) and (max-width:370px){
 
-  .rail{
+
+  html.goldy-portrait.goldy-small-portrait .rail{
     margin-top:calc(16 * var(--u));
   }
 
-  .row{
+  html.goldy-portrait.goldy-small-portrait .row{
     gap:calc(7 * var(--u));
   }
 
-  .poster{
+  html.goldy-portrait.goldy-small-portrait .poster{
     width:calc(100 * var(--u));
     height:calc(164 * var(--u));
   }
 
-  .panel{
+  html.goldy-portrait.goldy-small-portrait .panel{
     gap:calc(6 * var(--u));
   }
 
-  .btn{
+  html.goldy-portrait.goldy-small-portrait .btn{
     font-size:calc(13 * var(--u));
   }
 
-}
+
 
 
 /* =========================================================
    VERY SHORT LANDSCAPE
    ========================================================= */
 
-@media (orientation:landscape) and (max-height:360px){
 
-  .rail{
+
+  html.goldy-landscape.goldy-short-landscape .rail{
     top:calc(80 * var(--u));
   }
 
-  .poster{
+  html.goldy-landscape.goldy-short-landscape .poster{
     width:calc(130 * var(--u));
     height:calc(210 * var(--u));
   }
 
-  .panel{
+  html.goldy-landscape.goldy-short-landscape .panel{
     top:calc(315 * var(--u));
   }
 
-}
+
 .landscape-logo{
   display:none !important;
 }
 
-@media (orientation:landscape){
-  .landscape-logo{
+
+  html.goldy-landscape .landscape-logo{
     display:flex !important;
   }
-}
+
 
 /* =======================================================
    PORTRAIT LOGO
    ======================================================= */
 
-@media (orientation:portrait){
 
-  .landscape-logo{
+
+  html.goldy-portrait .landscape-logo{
     display:flex !important;
     position:absolute;
 
@@ -1252,7 +1250,7 @@ height:calc(160 * var(--u));
     pointer-events:none;
   }
 
-  .landscape-logo img{
+  html.goldy-portrait .landscape-logo img{
     display:block;
 
     width:auto;
@@ -1264,7 +1262,7 @@ height:calc(160 * var(--u));
     object-fit:contain;
   }
 
-}
+
 
  
 </style>
@@ -2365,9 +2363,9 @@ function render(){
 
 
   const portrait =
-    window.matchMedia(
-      "(orientation: portrait)"
-    ).matches;
+    document.documentElement.classList.contains(
+      "goldy-portrait"
+    );
 
 
   if(portrait){
@@ -2486,20 +2484,59 @@ function render(){
    ORIENTATION
    ========================================================= */
 
+function applyOrientation(){
+  var portrait =
+    window.innerHeight > window.innerWidth;
+
+  var shortLandscape =
+    !portrait &&
+    window.innerHeight <= 360;
+
+  var smallPortrait =
+    portrait &&
+    window.innerWidth <= 370;
+
+  document.documentElement.classList.toggle(
+    "goldy-portrait",
+    portrait
+  );
+
+  document.documentElement.classList.toggle(
+    "goldy-landscape",
+    !portrait
+  );
+
+  document.documentElement.classList.toggle(
+    "goldy-small-portrait",
+    smallPortrait
+  );
+
+  document.documentElement.classList.toggle(
+    "goldy-short-landscape",
+    shortLandscape
+  );
+}
+
+applyOrientation();
+
+
+
 let lastPortrait =
-  window.matchMedia(
-    "(orientation: portrait)"
-  ).matches;
+  document.documentElement.classList.contains(
+    "goldy-portrait"
+  );
 
 
 window.addEventListener(
   "resize",
   () => {
 
+    applyOrientation();
+
     const portrait =
-      window.matchMedia(
-        "(orientation: portrait)"
-      ).matches;
+      document.documentElement.classList.contains(
+        "goldy-portrait"
+      );
 
 
     if(
@@ -2956,6 +2993,7 @@ window.addEventListener(
    INITIAL
    ========================================================= */
 
+applyOrientation();
 render();
 
 
