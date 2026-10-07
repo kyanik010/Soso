@@ -1,3 +1,5 @@
+# Triggered manually or via push to this file / app/build.gradle.kts
+# Last manual trigger: see git history
 name: Generate Gradle Wrapper
 
 on:
