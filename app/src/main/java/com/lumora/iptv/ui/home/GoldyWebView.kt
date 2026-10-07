@@ -1,11 +1,14 @@
 package com.lumora.iptv.ui.home
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -109,6 +112,31 @@ fun GoldyHomeScreen(
                             return assetLoader.shouldInterceptRequest(request.url)
                         }
 
+                        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                            super.onPageStarted(view, url, favicon)
+                            // Polyfill for replaceChildren() on older WebView versions
+                            view?.evaluateJavascript("""
+                                (function() {
+                                    if (!Element.prototype.replaceChildren) {
+                                        Element.prototype.replaceChildren = function() {
+                                            while (this.firstChild) {
+                                                this.removeChild(this.firstChild);
+                                            }
+                                            for (var i = 0; i < arguments.length; i++) {
+                                                var node = arguments[i];
+                                                if (typeof node === 'string') {
+                                                    this.appendChild(document.createTextNode(node));
+                                                } else if (node) {
+                                                    this.appendChild(node);
+                                                }
+                                            }
+                                        };
+                                        console.log('POLYFILL: replaceChildren installed');
+                                    }
+                                })();
+                            """.trimIndent(), null)
+                        }
+
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             view?.let {
@@ -142,6 +170,18 @@ fun GoldyHomeScreen(
                                 "onReceivedHttpError: ${request?.url} - " +
                                     "status=${errorResponse?.statusCode}"
                             )
+                        }
+                    }
+
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                            AppLogger.d(
+                                "GoldyConsole",
+                                "${consoleMessage.messageLevel()}: " +
+                                    "${consoleMessage.message()} " +
+                                    "(@${consoleMessage.lineNumber()})"
+                            )
+                            return true
                         }
                     }
 
@@ -196,6 +236,8 @@ fun injectU(webView: WebView) {
                     u = Math.min(w / 739, h / 415);
                 }
                 document.documentElement.style.setProperty('--u', u + 'px');
+                console.log('INJECT_U_DEBUG: w=' + w + ' h=' + h + ' u=' + u);
+                return u;
             }
             calcU();
             window.addEventListener('resize', calcU);
