@@ -320,10 +320,20 @@ fun injectU(webView: WebView) {
                         var style = document.createElement('style');
                         style.id = 'goldy-orientation-compat';
                         style.textContent = [
+                            'html.goldy-force-portrait,',
+                            'html.goldy-force-portrait body {',
+                            '  width: ' + innerW + 'px !important;',
+                            '  height: ' + innerH + 'px !important;',
+                            '  margin: 0 !important;',
+                            '  padding: 0 !important;',
+                            '  overflow: hidden !important;',
+                            '  background: #020617 !important;',
+                            '}',
+
                             'html.goldy-force-portrait .stage {',
-                            '  width: 100% !important;',
-                            '  height: 100dvh !important;',
-                            '  max-height: 100dvh !important;',
+                            '  width: ' + innerW + 'px !important;',
+                            '  height: ' + innerH + 'px !important;',
+                            '  max-height: ' + innerH + 'px !important;',
                             '  top: 0 !important;',
                             '  left: 0 !important;',
                             '  transform: none !important;',
