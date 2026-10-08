@@ -228,7 +228,6 @@ class IptvRepository(
                     epgChannelId = ch.epgChannelId
                 )
             }
-            dao.insertChannels(channelEntities)
 
             // 3. Movies
             _syncState.value = SyncState(isSyncing = true, message = "جاري مزامنة الأفلام...", progressPercent = 75)
@@ -243,7 +242,6 @@ class IptvRepository(
                     containerExtension = m.containerExtension
                 )
             }
-            dao.insertMovies(movieEntities)
 
             // 4. Series
             _syncState.value = SyncState(isSyncing = true, message = "جاري مزامنة المسلسلات...", progressPercent = 90)
@@ -259,25 +257,22 @@ class IptvRepository(
                     categoryId = s.categoryId ?: "all"
                 )
             }
-            dao.insertSeries(seriesEntities)
 
             if (channelEntities.isEmpty() && movieEntities.isEmpty() && seriesEntities.isEmpty()) {
                 throw IllegalStateException("تم التحقق من الاشتراك لكن السيرفر لم يُرجع أي محتوى.")
             }
 
             // Commit the new content only after all requested datasets were fetched.
-            dao.clearChannels()
-            dao.clearMovies()
-            dao.clearSeries()
-            dao.clearCategories()
-            dao.insertCategories(catEntities)
-            dao.insertChannels(channelEntities)
-            dao.insertMovies(movieEntities)
-            dao.insertSeries(seriesEntities)
+            dao.replaceXtreamContent(
+                categories = catEntities,
+                channels = channelEntities,
+                movies = movieEntities,
+                series = seriesEntities
+            )
 
             secureStore.saveCredentials(
                 Credentials(
-                    serverUrl = PlaybackUrlBuilder.normalizeBaseUrl(serverUrl),
+                    serverUrl = serverUrl.trim().trimEnd('/'),
                     username = user,
                     password = pass,
                     sourceType = "xtream",
