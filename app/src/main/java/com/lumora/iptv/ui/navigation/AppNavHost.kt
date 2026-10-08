@@ -19,7 +19,6 @@ import com.lumora.iptv.ui.player.PlayerScreen
 import com.lumora.iptv.ui.series.SeriesDetailsScreen
 import com.lumora.iptv.ui.series.SeriesScreen
 import com.lumora.iptv.ui.settings.SettingsScreen
-import com.lumora.iptv.ui.splash.SplashScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -32,21 +31,31 @@ fun AppNavHost(
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route,
+        startDestination = Screen.SubscriptionSetup.route,
         modifier = modifier.fillMaxSize()
     ) {
-        // 1. Splash Screen
-        composable(Screen.Splash.route) {
-            SplashScreen(
+        // 1. Subscription setup gate.
+        // Fresh install: show the IPTV credential form immediately.
+        // Returning user with a valid saved session: go directly to Goldy X.
+        composable(Screen.SubscriptionSetup.route) {
+            val setupScope = rememberCoroutineScope()
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                val account = repository.getAccount()
+                val credentials = repository.getCredentials()
+                if (account != null && credentials != null) {
+                    navController.navigate(Screen.GoldyHome.route) {
+                        popUpTo(Screen.SubscriptionSetup.route) { inclusive = true }
+                    }
+                }
+            }
+
+            SettingsScreen(
                 repository = repository,
-                onProceed = {
-                    scope.launch {
-                        val account = repository.getAccount()
-                        val credentials = repository.getCredentials()
-                        val destination = if (account != null && credentials != null) Screen.GoldyHome.route else Screen.Settings.route
-                        navController.navigate(destination) {
-                            popUpTo(Screen.Splash.route) { inclusive = true }
-                        }
+                onBack = { /* No back navigation from the startup setup gate. */ },
+                onNavigateToAccount = { navController.navigate(Screen.Account.route) },
+                onSyncComplete = {
+                    navController.navigate(Screen.GoldyHome.route) {
+                        popUpTo(Screen.SubscriptionSetup.route) { inclusive = true }
                     }
                 }
             )
