@@ -194,10 +194,9 @@ fun GoldyHomeScreen(
                             view?.let { initializeGoldyPage(it) }
                         }
 
-                        override fun onPageCommitVisible(view: WebView, url: String) {
-                            super.onPageCommitVisible(view, url)
-                            initializeGoldyPage(view)
-                        }
+                        // Initialization is intentionally done once from onPageFinished.
+                        // Calling it again from onPageCommitVisible caused duplicate JS injection
+                        // and duplicate content pushes on some WebView versions.
 
                         override fun onReceivedError(
                             view: WebView,
