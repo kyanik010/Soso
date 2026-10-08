@@ -1,7 +1,7 @@
 package com.lumora.iptv.ui.navigation
 
 sealed class Screen(val route: String) {
-    object Splash : Screen("splash")
+    object SubscriptionSetup : Screen("subscription_setup")
     object GoldyHome : Screen("goldy_home")
     object Movies : Screen("movies")
     object Series : Screen("series")
