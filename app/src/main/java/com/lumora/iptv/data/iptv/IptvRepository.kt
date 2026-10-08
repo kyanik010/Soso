@@ -281,7 +281,7 @@ class IptvRepository(
             )
             dao.insertAccount(
                 AccountEntity(
-                    host = PlaybackUrlBuilder.normalizeBaseUrl(serverUrl),
+                    host = serverUrl.trim().trimEnd('/'),
                     username = user,
                     serverName = auth.serverInfo?.url ?: "Xtream Server",
                     expiryDate = expiry,
