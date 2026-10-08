@@ -43,6 +43,7 @@ class IptvRepository(
     private val dao = db.iptvDao()
 
     // AppNavHost and PlayerScreen receive the same repository instance from MainActivity.
+    // Content persistence is committed atomically after the complete Xtream fetch.
     private val playbackSources = mutableMapOf<String, PlaybackSource>()
 
     private val _syncState = MutableStateFlow(SyncState())
