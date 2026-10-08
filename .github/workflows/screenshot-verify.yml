@@ -57,25 +57,52 @@ jobs:
             echo "=== Installing APK ==="
             adb install -r app/build/outputs/apk/debug/app-debug.apk
 
-            echo "=== Launching app ==="
+            echo "=== Launching app once to initialize Room ==="
             adb shell monkey -p com.lumora.iptv -c android.intent.category.LAUNCHER 1
+            sleep 3
+            adb shell am force-stop com.lumora.iptv
 
-            echo "=== Waiting for UI to render ==="
-            sleep 12
+            echo "=== Seeding a valid local session + sample content ==="
+            adb shell "run-as com.lumora.iptv sqlite3 /data/data/com.lumora.iptv/databases/lumora_iptv_db 'INSERT OR REPLACE INTO accounts(id,host,username,serverName,expiryDate,status,lastSyncTimestamp) VALUES("primary_account","http://test.local","demo","Test Server","2099-12-31","Active",9999999999999); INSERT OR REPLACE INTO channels(streamId,num,name,streamIcon,categoryId,streamUrl,epgChannelId,isFavorite) VALUES(101,1,"Test Channel",NULL,"1","http://test.local/live/demo/pass/101.ts",NULL,0); INSERT OR REPLACE INTO movies(streamId,name,streamIcon,rating,categoryId,streamUrl,containerExtension,plot,duration,isFavorite) VALUES(201,"Test Movie",NULL,"0","2","http://test.local/movie/demo/pass/201.mp4","mp4",NULL,NULL,0); INSERT OR REPLACE INTO series(seriesId,name,cover,plot,cast,director,genre,releaseDate,rating,categoryId,isFavorite) VALUES(301,"Test Series",NULL,NULL,NULL,NULL,"Drama",NULL,"0","3",0);'"
 
-            echo "=== Capturing Portrait ==="
+            echo "=== Launching app with seeded session ==="
+            adb shell monkey -p com.lumora.iptv -c android.intent.category.LAUNCHER 1
+            sleep 8
+
+            echo "=== Capturing startup Goldy screen ==="
             adb exec-out screencap -p > portrait.png
 
-            echo "=== Switching to Landscape ==="
+            echo "=== Tapping LIVE ==="
+            adb shell input tap 350 430
+            sleep 2
+            adb exec-out screencap -p > live.png
+
+            echo "=== Returning to Goldy ==="
+            adb shell input keyevent KEYCODE_BACK
+            sleep 1
+
+            echo "=== Tapping MOVIES ==="
+            adb shell input tap 350 560
+            sleep 2
+            adb exec-out screencap -p > movies.png
+
+            echo "=== Returning to Goldy ==="
+            adb shell input keyevent KEYCODE_BACK
+            sleep 1
+
+            echo "=== Tapping SERIES ==="
+            adb shell input tap 350 690
+            sleep 2
+            adb exec-out screencap -p > series.png
+
+            echo "=== Capturing logcat ==="
+            adb logcat -d > logcat.txt
+
+            echo "=== Switching to Landscape (orientation is app-locked) ==="
             adb shell settings put system accelerometer_rotation 0
             adb shell settings put system user_rotation 1
-            sleep 5
-
-            echo "=== Capturing Landscape ==="
+            sleep 2
             adb exec-out screencap -p > landscape.png
-
-            echo "=== Dumping logcat ==="
-            adb logcat -d > logcat.txt
 
             echo "=== Done ==="
             ls -la *.png *.txt
