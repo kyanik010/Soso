@@ -38,7 +38,6 @@ fun AppNavHost(
         // Fresh install: show the IPTV credential form immediately.
         // Returning user with a valid saved session: go directly to Goldy X.
         composable(Screen.SubscriptionSetup.route) {
-            val setupScope = rememberCoroutineScope()
             androidx.compose.runtime.LaunchedEffect(Unit) {
                 val account = repository.getAccount()
                 val credentials = repository.getCredentials()
