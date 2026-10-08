@@ -214,8 +214,6 @@ class IptvRepository(
             val catEntities = (liveCats + vodCats + seriesCats).map {
                 CategoryEntity(id = "${it.type}_${it.id}", categoryId = it.id, categoryName = it.name, type = it.type)
             }
-            dao.insertCategories(catEntities)
-
             // 2. Channels
             _syncState.value = SyncState(isSyncing = true, message = "جاري مزامنة القنوات...", progressPercent = 50)
             val channels = xtreamClient.getLiveStreams(serverUrl, user, pass, null)
