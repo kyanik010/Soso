@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -91,6 +92,23 @@ interface IptvDao {
 
     @Query("DELETE FROM episodes WHERE seriesId = :seriesId")
     suspend fun clearEpisodesForSeries(seriesId: Int)
+
+    @Transaction
+    suspend fun replaceXtreamContent(
+        categories: List<CategoryEntity>,
+        channels: List<ChannelEntity>,
+        movies: List<MovieEntity>,
+        series: List<SeriesEntity>
+    ) {
+        clearChannels()
+        clearMovies()
+        clearSeries()
+        clearCategories()
+        insertCategories(categories)
+        insertChannels(channels)
+        insertMovies(movies)
+        insertSeries(series)
+    }
 
     // Accounts
     @Query("SELECT * FROM accounts WHERE id = 'primary_account' LIMIT 1")
