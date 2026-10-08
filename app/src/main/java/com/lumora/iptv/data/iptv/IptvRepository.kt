@@ -200,29 +200,9 @@ class IptvRepository(
             _syncState.value = SyncState(isSyncing = true, message = "جاري التحقق من بيانات الاشتراك...", progressPercent = 10)
             val auth = xtreamClient.authenticate(serverUrl, user, pass)
 
-            // Save encrypted credentials
+            // Keep credentials/account untouched until the complete content sync succeeds.
+            // This prevents a partial/failed sync from appearing as a valid new session.
             val expiry = auth.userInfo?.expDate ?: "غير محدد"
-            secureStore.saveCredentials(
-                Credentials(
-                    serverUrl = serverUrl,
-                    username = user,
-                    password = pass,
-                    sourceType = "xtream",
-                    expiryDate = expiry
-                )
-            )
-
-            // Save Account
-            dao.insertAccount(
-                AccountEntity(
-                    host = serverUrl,
-                    username = user,
-                    serverName = auth.serverInfo?.url ?: "Xtream Server",
-                    expiryDate = expiry,
-                    status = auth.userInfo?.status ?: "Active",
-                    lastSyncTimestamp = System.currentTimeMillis()
-                )
-            )
 
             // 1. Categories
             _syncState.value = SyncState(isSyncing = true, message = "جاري تحميل التصنيفات...", progressPercent = 30)
@@ -281,6 +261,40 @@ class IptvRepository(
                 )
             }
             dao.insertSeries(seriesEntities)
+
+            if (channelEntities.isEmpty() && movieEntities.isEmpty() && seriesEntities.isEmpty()) {
+                throw IllegalStateException("تم التحقق من الاشتراك لكن السيرفر لم يُرجع أي محتوى.")
+            }
+
+            // Commit the new content only after all requested datasets were fetched.
+            dao.clearChannels()
+            dao.clearMovies()
+            dao.clearSeries()
+            dao.clearCategories()
+            dao.insertCategories(catEntities)
+            dao.insertChannels(channelEntities)
+            dao.insertMovies(movieEntities)
+            dao.insertSeries(seriesEntities)
+
+            secureStore.saveCredentials(
+                Credentials(
+                    serverUrl = PlaybackUrlBuilder.normalizeBaseUrl(serverUrl),
+                    username = user,
+                    password = pass,
+                    sourceType = "xtream",
+                    expiryDate = expiry
+                )
+            )
+            dao.insertAccount(
+                AccountEntity(
+                    host = PlaybackUrlBuilder.normalizeBaseUrl(serverUrl),
+                    username = user,
+                    serverName = auth.serverInfo?.url ?: "Xtream Server",
+                    expiryDate = expiry,
+                    status = auth.userInfo?.status ?: "Active",
+                    lastSyncTimestamp = System.currentTimeMillis()
+                )
+            )
 
             _syncState.value = SyncState(isSyncing = false, message = "اكتملت المزامنة بنجاح!", progressPercent = 100)
             Result.success(Unit)
